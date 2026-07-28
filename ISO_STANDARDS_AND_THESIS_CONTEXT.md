@@ -1,122 +1,176 @@
-# ISO Standards Integration & Thesis Context Guide
+# Offline University Helpdesk Thesis
 
-> **Target Degree Program**: Computer Engineering (CpE)  
-> **Target Hardware**: Single host machine with an **8 GB VRAM GPU**, co-hosting both the web application (chatbot portal) and the local quantized LLM inference engine (`llama.cpp`).  
-> **Core Objective**: Co-optimizing **latency**, **precision**, **accuracy**, and **hardware resource footprint** (VRAM/RAM/CPU) under constrained execution conditions.
+## Project summary
 
----
+This thesis investigates whether a small, locally deployed language model can provide grounded university-information assistance under constrained hardware and network conditions. The proposed system combines an approved institutional document corpus, hybrid retrieval, evidence-aware routing, behavior-oriented QLoRA, and quantized inference.
 
-## 1. Overview & Computer Engineering Context
+The intended contribution is not merely a chatbot. It is an empirical study of the quality, latency, memory, and reliability trade-offs involved in building an offline retrieval-augmented generation (RAG) system for a university helpdesk.
 
-This document serves as the authoritative guide for integrating international engineering standards into the **Offline University Helpdesk RAG Thesis**.
+## Research objective
 
-In Computer Engineering thesis defenses, software and AI systems are evaluated not merely on whether they "work," but on **hardware-software co-design efficiency**, **quantitative resource constraints**, and **empirical measurement rigor**.
+Design and evaluate an offline-capable university helpdesk that:
 
----
+- answers questions from approved institutional sources;
+- cites the evidence used;
+- abstains or asks for clarification when evidence is insufficient;
+- protects personal and restricted information;
+- supports realistic English, Filipino, and code-switched questions;
+- runs on constrained campus hardware;
+- remains maintainable as policies and documents change.
 
-## 2. Selected ISO Standards & Defense Justification
+## Proposed research questions
 
-To ensure a successful thesis defense, three international standards have been selected to structure the theoretical framework, evaluation methodology, and results analysis:
+1. Does metadata-aware hybrid retrieval with reranking outperform BM25-only and dense-only retrieval on university questions?
+2. Does behavior-only QLoRA improve instruction following, citation behavior, and abstention over an untuned instruction model?
+3. How does behavior-only QLoRA compare with behavior-plus-facts QLoRA when retrieved evidence conflicts with memorized facts?
+4. What quality, latency, concurrency, RAM, and VRAM trade-offs result from deployment quantization?
+5. Can the selected configuration meet predefined reliability and response-time targets on the target campus computer?
 
-### 1. ISO/IEC 25010:2023 — Product Quality Model
-* **What it is**: The standard framework defining software and system product quality characteristics.
-* **Why it is there**: It replaces vague quality claims with 4 concrete engineering pillars:
-  1. *Performance Efficiency* (Time Behaviour & Resource Utilization)
-  2. *Functional Suitability* (Functional Correctness & Accuracy)
-  3. *Reliability* (Fault tolerance under memory pressure, groundedness, and abstention)
-  4. *Capacity / Limits* (Operating within 8 GB VRAM limits)
-* **Why it is important for CpE**: Panels require a standardized software engineering framework to validate that system quality claims are systematically categorized.
-* **How to apply**: Used in **Chapter 1** (Theoretical Framework) to establish evaluation pillars and in **Chapter 4** (Results & Discussion) to organize findings.
+## Experimental model variants
 
----
+| ID | Variant | Purpose |
+|---|---|---|
+| Q0 | Untuned instruction model + identical RAG | Determines whether fine-tuning is necessary |
+| Q1 | Behavior-only QLoRA + identical RAG | Tests learned grounding, citation, refusal, and brevity behavior |
+| Q2 | Behavior-plus-facts QLoRA + identical RAG | Measures stale-memory and evidence-conflict risk |
 
-### 2. ISO/IEC 25023:2016 — System & Software Quality Measurement
-* **What it is**: The operational measurement standard that accompanies ISO 25010, providing exact mathematical formulas and quantitative metrics.
-* **Why it is there**: ISO 25010 tells you *what* to measure; ISO 25023 tells you *how* to calculate it mathematically.
-* **Why it is important for CpE**: Essential for Computer Engineering rigor. Prevents generic descriptions by enforcing formal equations for Time to First Token (TTFT), Generation Throughput (TPS), Memory Footprint, and Retrieval Precision.
-* **How to apply**: Used in **Chapter 3** (Methodology) to construct the Master Evaluation Matrix and benchmark scripts.
+Q2 is an ablation, not the presumed production winner. The production candidate should normally keep changeable institutional facts in the retrieval corpus.
 
----
+Differences between variants are tested for statistical significance following ISO/IEC TS 4213 methodology, not compared on point estimates alone.
 
-### 3. ISO/IEC 42001:2023 — Artificial Intelligence Management System (AIMS)
-* **What it is**: The international standard for trustworthy, evidence-grounded AI deployment and model governance.
-* **Why it is there**: Governs AI model quantization trade-offs, evidence-aware routing (answering vs clarifying vs abstaining), and institutional data provenance.
-* **Why it is important for CpE**: Defends why the system uses local 4-bit GGUF quantization and strict evidence-grounding instead of relying on ungrounded black-box cloud generation.
-* **How to apply**: Justifies the evaluation of model variants ($Q_0, Q_1, Q_2$) and refusal/abstention precision in **Chapters 3 & 4**.
-
----
-
-## 3. Master ISO Evaluation Matrix (Chapter 3 Methodology)
-
-Use this master matrix table when drafting Chapter 3 of the thesis paper:
-
-| ISO Standard | Quality Characteristic | Metric Name | Mathematical Formula / Operational Definition | Measurement Instrument / Tool | Target Benchmark |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **ISO/IEC 25010** | **Performance Efficiency** (Time Behaviour) | Time to First Token (TTFT) | $\text{TTFT} = T_{\text{first\_token\_emitted}} - T_{\text{query\_received}}$ | `llama.cpp` performance logger | $< 1.5 \text{ seconds}$ |
-| **ISO/IEC 25010** | **Performance Efficiency** (Time Behaviour) | Generation Throughput | $\text{TPS} = \frac{\text{Total Output Tokens}}{T_{\text{generation\_end}} - T_{\text{first\_token}}}$ | Inference server metrics endpoint | $> 15 \text{ tokens/sec}$ |
-| **ISO/IEC 25010** | **Performance Efficiency** (Resource Utilization) | Total Co-Hosted Memory Footprint | $\text{Mem}_{\text{total}} = \text{VRAM}_{\text{model}} + \text{VRAM}_{\text{kv\_cache}} + \text{RAM}_{\text{web\_app}}$ | `nvidia-smi` & `psutil` background logger | $\le 8.0 \text{ GB VRAM}$ (Zero OOM) |
-| **ISO/IEC 25023** | **Functional Suitability** (Functional Correctness) | Retrieval Precision@K | $\text{Precision@K} = \frac{\|\text{Relevant Chunks Retrieved}\|}{|K|}$ | Python evaluation benchmark script | $> 85\%$ |
-| **ISO/IEC 25023** | **Functional Suitability** (Accuracy) | Answer Groundedness Ratio | $\text{Groundedness} = \frac{\text{Claims Entailed by Evidence}}{\text{Total Claims Generated}}$ | Ragas / TruLens / LLM Judge validation | $> 90\%$ |
-| **ISO/IEC 42001** | **AI Reliability & Governance** | Abstention Precision | $\text{Abstention Precision} = \frac{\text{Correct Refusals}}{\text{Unanswerable / Out-of-Domain Queries}}$ | Curated unanswerable test dataset | $100\%$ zero ungrounded hallucination |
-| **ISO/IEC 42001** | **Model Optimization Efficiency** | Quantization Loss Delta | $\Delta_{\text{quant}} = \text{Accuracy}_{\text{FP16}} - \text{Accuracy}_{\text{Q4\_K\_M}}$ | Benchmark scripts across Q8, Q5, Q4 variants | $< 5\%$ loss vs FP16 reference |
-
----
-
-## 4. System Co-Hosting Topology & Hardware Test Protocol
+## System architecture
 
 ```mermaid
 flowchart TD
-  subgraph Client_Layer ["Client Access Layer"]
-    U[Student Query via Web Browser]
-  end
+  A[Approved institutional documents] --> B[Validation and extraction/OCR]
+  B --> C[Table-aware normalization]
+  C --> D[Authority, version, and access classification]
+  D --> E[Structure-aware chunking]
+  E --> F[BM25 index]
+  E --> G[Vector index]
 
-  subgraph Host_Hardware ["Single Hardware Host (8GB VRAM GPU + CPU + RAM)"]
-    subgraph Web_Hosting ["Co-Hosted Web Server (CPU/RAM)"]
-      WS[Web Helpdesk Portal]
-      DB[Institutional Vector & BM25 Index]
-      P[Policy & Privacy Gate]
-    end
-
-    subgraph RAG_Pipeline ["Retrieval & Routing Engine (CPU)"]
-      H[Hybrid Lexical + Vector Retrieval]
-      R[Reranker & Evidence Sufficiency Decision]
-    end
-
-    subgraph LLM_Engine ["Quantized Inference Server (GPU VRAM)"]
-      LLM["llama.cpp Local Server (GGUF Q4_K_M)"]
-    end
-  end
-
-  U -->|HTTP Request| WS
-  WS --> P
-  P -->|Valid Query| H
-  DB <--> H
-  H --> R
-  R -->|Sufficient Evidence| LLM
-  R -->|Ambiguous| Clarify[Return Clarification Request]
-  R -->|Insufficient| Abstain[Return Abstention & Office Referral]
-  LLM -->|Streamed Tokens| WS
-  WS -->|Cites & Answer| U
+  U[User question] --> P[Policy and intent checks]
+  P --> R[Hybrid retrieval]
+  F --> R
+  G --> R
+  R --> X[Optional reranking]
+  X --> S[Evidence-sufficiency decision]
+  S -->|Sufficient| L[Quantized local LLM]
+  S -->|Ambiguous| C2[Clarification]
+  S -->|Insufficient| A2[Abstention and office referral]
+  L --> V[Citation-ID validation]
+  V --> O[Answer with sources]
 ```
 
-### Co-Hosted Hardware Benchmarking Steps
-1. **Idle State Benchmark**: Record baseline VRAM, RAM, and CPU usage when only the web application server is active.
-2. **Model-Loaded Benchmark**: Load the GGUF model into VRAM and record remaining VRAM headroom available for KV caching.
-3. **Load Testing Benchmark**: Simulate concurrent student queries (1, 5, 10 active requests) to measure TTFT degradation, TPS variance, and memory swap safety under ISO 25010 Capacity limits.
+A low retrieval score must not be interpreted as chit-chat. Plausible university-information questions proceed through retrieval; weak evidence leads to clarification or abstention.
 
----
+## Knowledge-base requirements
 
-## 5. Instructions for Thesis Writing & Future AI Agents
+Store original files and immutable hashes. Each indexed unit should retain at least:
 
-When drafting or editing manuscript sections:
+- `document_id` and `document_version`;
+- title, page, section, and chunk identifier;
+- office owner and approving authority;
+- effective and expiry dates;
+- status such as draft, approved, superseded, or archived;
+- access level and `no_index` status;
+- extraction/OCR quality flags;
+- source path and content hash.
 
-1. **Chapter 1 (Introduction & Framework)**:
-   - Add a sub-section titled **"1.X ISO Standards Alignment"** using ISO 25010 and ISO 42001 to justify system design boundaries.
-2. **Chapter 3 (Methodology)**:
-   - Include Section 3 (**Master ISO Evaluation Matrix**) above with full formulas.
-   - Explain how `nvidia-smi` and `psutil` are used to monitor memory co-hosting.
-3. **Chapter 4 (Results & Discussion)**:
-   - Organize experimental results according to the ISO quality characteristics:
-     - *4.1 ISO 25010 Performance Efficiency & Hardware Co-Hosting Analysis*
-     - *4.2 ISO 25023 Hybrid Retrieval Precision & Accuracy*
-     - *4.3 ISO 42001 AI Reliability & Model Variant Benchmark ($Q_0$ vs $Q_1$ vs $Q_2$)*
+Tables, schedules, fee matrices, and directories require structure-preserving extraction. Fixed token chunks are a baseline, not a universal rule.
+
+This field set operationalizes ISO/IEC 25012 data quality characteristics: effective/expiry dates for currentness, approving authority and status for credibility, access level for confidentiality, and document ID/version/hash for traceability.
+
+## Routing and answer policy
+
+1. Apply deterministic privacy, access-control, and restricted-request rules.
+2. Identify explicit social conversation where rules or a lightweight classifier are reliable.
+3. Treat other requests as potential university-information questions and retrieve evidence.
+4. Fuse lexical and dense rankings; rerank only when its measured benefit justifies latency.
+5. Estimate evidence sufficiency using calibrated validation data rather than a raw RRF threshold.
+6. Answer only from supplied evidence, ask one useful clarification, or abstain.
+7. Accept only server-issued citation identifiers that correspond to retrieved evidence.
+
+See [prompt_and_routing_architecture.md](prompt_and_routing_architecture.md). Step 1 follows ISO/IEC 29100 privacy principles, including purpose limitation and data minimization.
+
+## Fine-tuning strategy
+
+The initial QLoRA configuration should use 4-bit NF4 loading, double quantization, gradient checkpointing, and BF16 compute when the training GPU supports it. Candidate LoRA ranks, target modules, learning rates, and sequence lengths must be tested in a bounded experiment rather than treated as universal optima.
+
+Training examples should use the checkpoint's official chat template and normally compute loss only on assistant output. Split data by source document, intent template, and paraphrase family to limit leakage. Evaluate the adapter before merging, then merge, convert to GGUF, quantize, and evaluate the final deployment artifact again.
+
+Training hardware and deployment hardware are separate concerns. A model file fitting in 8GB VRAM does not prove QLoRA training or concurrent inference will fit.
+
+## Constrained deployment
+
+The target candidate is a quantized 3B instruction model served locally, with GPU memory prioritized for generation. Dense embedding and reranking should be benchmarked on CPU or loaded selectively. Start with a short effective context, top-three evidence chunks, limited history, and conservative decoding.
+
+Compare at least a high-precision reference where available, Q8, Q5_K_M, and Q4_K_M. Record time to first token, prompt and generation throughput, end-to-end latency, RAM, VRAM, answer quality, and queue delay under concurrent requests.
+
+## Evaluation
+
+Evaluate retrieval separately from answer generation. The test collection should include answerable, unanswerable, ambiguous, conflicting, stale-policy, privacy-sensitive, adversarial, multilingual, and code-switched questions.
+
+Report:
+
+- Recall@k, MRR, and nDCG for retrieval;
+- evidence-sufficiency precision, recall, F1, and calibration;
+- answer correctness and groundedness;
+- citation presence, validity, entailment, and completeness;
+- correct abstention, useful clarification, wrong refusal, and unsupported answer rates;
+- answer coverage and selective risk;
+- latency, throughput, RAM, VRAM, and concurrency behavior;
+- human ratings and uncertainty intervals.
+
+Classifier metrics (evidence-sufficiency precision/recall/F1/calibration, abstention and refusal rates) follow ISO/IEC TS 4213 methodology. Latency, throughput, RAM, and VRAM are organized under the ISO/IEC 25010 / 25059 performance-efficiency characteristic; groundedness and correctness under functional suitability.
+
+## Feasible scope
+
+The feasible core is a single-node intranet prototype serving approved institutional information with a 3B quantized model and a controlled corpus. High concurrency, universally strong Filipino generation, very long context, and simultaneous GPU residency for the generator, BGE-M3, and a reranker are stretch goals that require measurement.
+
+A request queue is an acceptable constrained-system design. The thesis should report boundaries honestly rather than claim production capacity from model size alone.
+
+## Standards and reference frameworks
+
+Design and evaluation choices are aligned with named external standards where a clear mapping exists. This is design alignment, not formal ISO certification, which is an audited organizational process outside the scope of a thesis prototype.
+
+- **ISO/IEC 25010:2023** and **ISO/IEC 25059:2023** (its AI-specific extension) — product quality model. Supplies the quality characteristics behind RQ4 (performance efficiency, functional suitability, reliability) and organizes the results chapter. Measured using **ISO/IEC 25023:2016** where its metrics still apply to the revised 2023 characteristic set; note it predates that revision.
+- **ISO/IEC TS 4213:2022** — assessment of ML classification performance. Defines how precision, recall, F1, calibration, and coverage are computed for the evidence-sufficiency and intent classifiers, and how Q0/Q1/Q2 differences are tested for statistical significance.
+- **ISO/IEC 42001:2023** — AI management system. Frames why the system is built around risk-based routing (answer / clarify / abstain) and evidence grounding. Used for governance rationale, not as a source of technical metrics.
+- **ISO/IEC 25012:2008** — data quality model. Grounds the knowledge-base metadata fields above (currentness, credibility, confidentiality, traceability).
+- **ISO/IEC 29100:2024** — privacy framework. Grounds the deterministic privacy and access-control handling in the routing policy.
+
+Full citations are listed under Primary references.
+
+## Documentation map
+
+- [AI project context](docs/consultation/01_ai_project_context.md)
+- [Architecture review](docs/consultation/02_architecture_review.md)
+- [QLoRA fine-tuning](docs/consultation/03_qlora_fine_tuning.md)
+- [Retrieval and knowledge base](docs/consultation/04_retrieval_and_knowledge_base.md)
+- [Constrained inference](docs/consultation/05_constrained_inference_optimization.md)
+- [Evaluation methodology](docs/consultation/06_evaluation_methodology.md)
+- [Feasibility, risks, and scope](docs/consultation/07_feasibility_risks_and_scope.md)
+- [Execution roadmap](docs/consultation/08_execution_roadmap.md)
+
+## Primary references
+
+- Dettmers et al., “QLoRA: Efficient Finetuning of Quantized LLMs,” 2023: https://arxiv.org/abs/2305.14314
+- Meta, Llama 3.2 3B Instruct model card: https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct
+- Hugging Face PEFT documentation: https://huggingface.co/docs/peft/
+- Hugging Face TRL documentation: https://huggingface.co/docs/trl/
+- Hugging Face bitsandbytes quantization: https://huggingface.co/docs/transformers/quantization/bitsandbytes
+- llama.cpp: https://github.com/ggml-org/llama.cpp
+- Chen et al., “BGE M3-Embedding,” 2024: https://arxiv.org/abs/2402.03216
+- Cormack et al., “Reciprocal Rank Fusion,” 2009: https://doi.org/10.1145/1571941.1572114
+- ISO/IEC 25010:2023, Systems and software engineering — SQuaRE — Product quality model. ISO: https://www.iso.org/standard/78176.html
+- ISO/IEC 25059:2023, Software engineering — SQuaRE — Quality model for AI systems. ISO: https://www.iso.org/standard/80655.html
+- ISO/IEC 25023:2016, Systems and software engineering — SQuaRE — Measurement of system and software product quality. ISO: https://www.iso.org/standard/35747.html
+- ISO/IEC TS 4213:2022, Information technology — Artificial intelligence — Assessment of machine learning classification performance. ISO: https://www.iso.org/standard/79799.html
+- ISO/IEC 42001:2023, Information technology — Artificial intelligence — Management system. ISO: https://www.iso.org/standard/42001
+- ISO/IEC 25012:2008, Software engineering — SQuaRE — Data quality model. ISO: https://www.iso.org/standard/35736.html
+- ISO/IEC 29100:2024, Information technology — Security techniques — Privacy framework. ISO: https://www.iso.org/standard/85938.html
+
+## Status
+
+This document defines the revised thesis plan. Numerical thresholds, context sizes, model placement, and production capacity remain experimental decisions until validated on the actual corpus and target hardware.
