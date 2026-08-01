@@ -1,0 +1,52 @@
+"""
+Central configuration for the routing PoC.
+
+Edit values here to swap components without touching pipeline logic —
+e.g. pointing GENERATOR_MODEL at a local 4-bit Llama 3.2 3B / Qwen3 4B
+endpoint later, or retuning thresholds against your labeled eval set.
+"""
+
+import os
+
+from dotenv import load_dotenv
+
+load_dotenv()  # reads .env in the project root into os.environ, if present
+
+# --- Gate 3: answer generation ---
+GENERATOR_MODEL = "gpt-4o-mini"
+GENERATOR_TEMPERATURE = 0.0
+GENERATOR_MAX_TOKENS = 400
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+
+# --- Gate 1: scope gate ---
+# Small pretrained sentence-embedding model. No training happens here:
+# the model already knows how to embed text: we just do a nearest-
+# neighbor cosine-similarity lookup against labeled exemplar queries.
+EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+SCOPE_SIMILARITY_THRESHOLD = 0.50  # tune against your labeled eval set
+
+# --- Gate 2: evidence gate ---
+BM25_TOP_K = 3
+BM25_SCORE_THRESHOLD = 1.0  # tune against your labeled eval set
+
+# --- Paths ---
+DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+CORPUS_PATH = os.path.join(DATA_DIR, "corpus.json")
+SCOPE_EXEMPLARS_PATH = os.path.join(DATA_DIR, "scope_exemplars.json")
+
+# --- Prompt contract (from prompt_and_routing_architecture.md) ---
+SYSTEM_PROMPT = """You are an offline university-helpdesk prototype.
+Answer only using the supplied LMS evidence.
+Do not invent policies, dates, fees, requirements, contacts, or procedures.
+Give a concise English answer and cite the supplied document title and page or section.
+If the evidence does not support an answer, do not guess."""
+
+# --- Predefined non-answer messages (output contract) ---
+SCOPE_MESSAGE = (
+    "This assistant only handles university helpdesk questions "
+    "(policies, procedures, and information from the student handbook and LMS)."
+)
+REFERRAL_MESSAGE = (
+    "I could not verify this from the selected LMS materials. "
+    "Please contact the appropriate university office."
+)

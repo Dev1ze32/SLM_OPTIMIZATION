@@ -1,0 +1,44 @@
+{
+    "passages": [
+        {
+            "document_id": "LMS_001",
+            "title": "Student Handbook",
+            "source": "University LMS / Student Handbook",
+            "revision_date": "2025-08-01",
+            "page_or_section": "Section 4.2 - Leave of Absence",
+            "text": "Students requesting a leave of absence must submit a Leave of Absence Request Form to the Office of the Registrar at least two weeks before the intended start date. Approval is granted for a maximum of two consecutive semesters."
+        },
+        {
+            "document_id": "LMS_002",
+            "title": "Student Handbook",
+            "source": "University LMS / Student Handbook",
+            "revision_date": "2025-08-01",
+            "page_or_section": "Section 5.1 - Course Withdrawal",
+            "text": "Students may drop a course without academic penalty up to the end of the seventh week of the semester. Withdrawal requests submitted after this period require approval from the course instructor and the Dean's office."
+        },
+        {
+            "document_id": "LMS_003",
+            "title": "Grading Policy",
+            "source": "University LMS / Academic Policies",
+            "revision_date": "2025-06-15",
+            "page_or_section": "Section 2.3 - Grade Appeals",
+            "text": "A student who disputes a final grade may file a written grade appeal with the department chair within ten business days of the grade being posted. The chair will convene a review committee within two weeks of receiving the appeal."
+        },
+        {
+            "document_id": "LMS_004",
+            "title": "Enrollment Policy",
+            "source": "University LMS / Registrar",
+            "revision_date": "2025-07-01",
+            "page_or_section": "Section 1.4 - Add/Drop Period",
+            "text": "The add/drop period for each semester runs for the first ten calendar days of classes. Course changes made after this period are recorded as withdrawals rather than removals from the academic record."
+        },
+        {
+            "document_id": "LMS_005",
+            "title": "Student Handbook",
+            "source": "University LMS / Student Handbook",
+            "revision_date": "2025-08-01",
+            "page_or_section": "Section 6.5 - Academic Integrity",
+            "text": "Violations of academic integrity, including plagiarism and unauthorized collaboration, are referred to the Academic Integrity Committee. First-time violations may result in a failing grade for the assignment; repeat violations may result in suspension."
+        }
+    ]
+}
