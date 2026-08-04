@@ -18,22 +18,34 @@ GENERATOR_TEMPERATURE = 0.0
 GENERATOR_MAX_TOKENS = 400
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
-# --- Gate 1: scope gate ---
+# --- Shared embedding model (Gate 1 scope check + Gate 2 dense retrieval) ---
 # Small pretrained sentence-embedding model. No training happens here:
 # the model already knows how to embed text: we just do a nearest-
 # neighbor cosine-similarity lookup against labeled exemplar queries.
-EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+# bge-small-en-v1.5 is retrieval-tuned (384-dim, 512-token max), unlike
+# all-MiniLM-L6-v2 which is tuned for sentence similarity. The query is
+# embedded once and reused by both gates.
+EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
 # Gate 1 must never allocate VRAM: the 4-bit SLM needs all 8 GB. Left
 # unset, sentence-transformers auto-selects cuda whenever it is available.
 EMBEDDING_DEVICE = "cpu"
 # Caps torch's CPU thread pool so Gate 1 doesn't grab every core by
 # default; keeps CPU-side latency numbers comparable across runs.
 EMBEDDING_CPU_THREADS = 4
-SCOPE_SIMILARITY_THRESHOLD = 0.50  # tune against your labeled eval set
+# NOTE: recalibrate after the switch to bge-small — its cosine similarity
+# distribution runs higher than all-MiniLM-L6-v2, so 0.50 is not transferable.
+SCOPE_SIMILARITY_THRESHOLD = 0.50  # placeholder; tune against labeled eval set
 
-# --- Gate 2: evidence gate ---
+# --- Gate 2: hybrid retrieval ---
+# Lexical retrieval
 BM25_TOP_K = 3
-BM25_SCORE_THRESHOLD = 1.0  # tune against your labeled eval set
+BM25_COVERAGE_THRESHOLD = 1.0  # tune against your labeled eval set
+
+# Dense retrieval
+DENSE_SCORE_THRESHOLD = 0.65  # tune against your labeled eval set
+
+# Rank fusion
+RRF_K = 60  # reciprocal rank fusion constant; tune against your labeled eval set
 
 # --- Paths ---
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")

@@ -12,6 +12,7 @@ The study is a **controlled prototype evaluation**, not a production deployment,
 - English university-related queries only.
 - Selected student-facing handbooks, rules, policies, and related materials from the University LMS form the local corpus.
 - Hybrid retrieval (BM25 lexical + dense embedding) retrieves passages; RRF fusion reranks candidates; disjunctive sufficiency gate admits answers when either retriever exceeds its threshold.
+- Dense retrieval uses exhaustive cosine similarity over an in-memory embedding array, **not** a vector database. At 364 chunks (~550 KB of vectors) exhaustive search returns *exact* nearest neighbors in under a millisecond; an approximate-nearest-neighbor index would add infrastructure and approximation error with no retrieval benefit at this scale. Embeddings are cached to disk so they are computed once, not per run.
 - RAG produces answers from retrieved LMS passages with document/page or section citations.
 - Lightweight routing returns either a supported RAG answer or a predefined non-answer/office referral. No clarification route is promised.
 - QLoRA trains helpdesk behavior, not changeable university facts.
@@ -23,7 +24,7 @@ The study is a **controlled prototype evaluation**, not a production deployment,
 
 ```text
 Selected LMS materials -> local knowledge base -> BM25 retrieval
-English query -> scope check -> retrieval and evidence check
+English query -> retrieval and evidence check -> scope check only if insufficient
   -> supported: RAG answer with citation
   -> unsupported/out of scope: predefined non-answer or office referral
 
@@ -45,19 +46,32 @@ All outputs -> quality and performance evaluation
 
 ## Evaluation plan
 
-Hold the corpus, prompt, query set, decoding settings, and hardware constant whenever comparing configurations.
+Hold the corpus, prompt, query set, decoding settings, and hardware constant whenever comparing configurations. Comparisons are one-factor-at-a-time from a shared anchor, never factorial.
 
-1. **QLoRA comparison:** base model at 4-bit versus QLoRA-adapted model at 4-bit. Measure answer correctness, groundedness, citation accuracy, instruction following, and unsupported-query handling.
-2. **Quantization comparison:** base model at 4-bit versus a feasible higher-precision reference. Measure end-to-end latency, throughput, VRAM consumption, groundedness, and citation accuracy.
-3. **Final prototype quality:** assess functional suitability, performance efficiency, response-handling reliability, and source traceability using selected ISO/IEC 25010:2023 and ISO/IEC 25059:2023 characteristics.
+Three configurations, all at hybrid retrieval:
 
-The evaluation dataset should include English queries with supporting LMS evidence and English queries without relevant evidence. Record the expected answer or expected referral and the supporting passage for each supported query.
+| ID | Model | Precision | Role |
+| --- | --- | --- | --- |
+| A | base | 4-bit | Anchor; shared by both comparisons |
+| B | QLoRA-adapted | 4-bit | A vs B isolates the adapter |
+| C | base | higher-precision reference | A vs C isolates quantization |
+
+1. **QLoRA comparison (A vs B):** measure answer correctness, groundedness, citation accuracy, instruction following, and unsupported-query handling.
+2. **Quantization comparison (A vs C):** measure end-to-end latency, throughput, VRAM consumption, groundedness, and citation accuracy.
+3. **Retrieval ablation:** BM25-only versus dense-only versus hybrid, using retrieval metrics only — no LLM call and no human grading. Retrieval stays fixed at hybrid for A, B, and C.
+4. **Final prototype quality:** assess functional suitability, performance efficiency, response-handling reliability, and source traceability using selected ISO/IEC 25010:2023 and ISO/IEC 25059:2023 characteristics.
+
+The evaluation dataset is roughly 80 stratified English queries: answerable from the corpus, in scope without evidence, and out of scope. Record the expected answer or expected referral for each, and gold supporting chunks for the answerable ones.
+
+Retrieve once per query and replay identical cached evidence to A, B, and C so that observed differences are attributable to the varied factor rather than to retrieval variance.
+
+[EVALUATION_PLAN.md](EVALUATION_PLAN.md) is the detailed measurement design: query-set composition, the pooling protocol for gold-chunk annotation, the automatic-versus-human metric split, run counts, effort budget, and the triage order if the schedule collapses.
 
 ## Scope boundaries
 
 Included: offline prototype, selected student-facing LMS documents available to students, English queries, hybrid retrieval RAG (BM25 + dense embedding with RRF fusion), QLoRA behavior adaptation, 4-bit performance testing, and controlled evaluation.
 
-Excluded: live LMS connection, personal student records, multilingual support, reranking beyond RRF, calibrated classifier research (Gate 1 remains an exemplar-based nearest-neighbor lookup), user-satisfaction study, high-concurrency service, production deployment, and ongoing maintenance.
+Excluded: live LMS connection, personal student records, multilingual support, reranking beyond RRF, calibrated classifier research (Gate 1 remains an exemplar-based nearest-neighbor lookup), vector-database or approximate-nearest-neighbor infrastructure, user-satisfaction study, high-concurrency service, production deployment, and ongoing maintenance.
 
 ## Execution order
 
@@ -82,4 +96,7 @@ Excluded: live LMS connection, personal student records, multilingual support, r
 - [README.md](README.md): concise project context and document index.
 - [ArchitectureAndDesign.md](ArchitectureAndDesign.md): system components, data flow, and experiments.
 - [prompt_and_routing_architecture.md](prompt_and_routing_architecture.md): prompt contract, routing, output, and citation validation.
+- [EVALUATION_PLAN.md](EVALUATION_PLAN.md): measurement design, query set, annotation protocol, effort budget, triage order.
 - [ISO_STANDARDS_AND_THESIS_CONTEXT.md](ISO_STANDARDS_AND_THESIS_CONTEXT.md): ISO-guided evaluation mapping and thesis boundaries.
+
+`consultation/` contains superseded design notes from an earlier, larger scope (clarification route, multilingual evaluation, reranking, Q2 adapter, concurrency testing). Retained for design rationale only. Do not cite it in the manuscript or reintroduce its scope.

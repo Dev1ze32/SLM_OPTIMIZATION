@@ -6,7 +6,7 @@ This note maps the prototype evaluation to relevant quality standards. The stand
 
 ## Study context
 
-The study develops and evaluates an English-only, offline university-helpdesk prototype. It uses selected student-facing LMS materials, BM25 retrieval, RAG, a selected local SLM, QLoRA behavior adaptation, and 4-bit performance testing in an 8 GB VRAM environment.
+The study develops and evaluates an English-only, offline university-helpdesk prototype. It uses selected student-facing LMS materials, hybrid retrieval (BM25 + dense embedding with RRF fusion), RAG, a selected local SLM, QLoRA behavior adaptation, and 4-bit performance testing in an 8 GB VRAM environment.
 
 The governing decisions are in [THESIS_BATTLE_PLAN.md](THESIS_BATTLE_PLAN.md).
 
@@ -26,12 +26,14 @@ Use this as the AI-system quality context for source traceability and evidence-g
 
 ## Evaluation matrix
 
-| Quality focus | Prototype measure | Evidence source |
-| --- | --- | --- |
-| Functional suitability | correctness, groundedness, citation accuracy | labelled English test cases and retrieved passages |
-| Performance efficiency | latency, throughput, peak VRAM | controlled test-environment logs |
-| Response-handling reliability | correct answer or referral route | supported and unsupported test cases |
-| Source traceability | valid document title and page/section citation | local knowledge-base metadata |
+This table organizes measurements defined in [EVALUATION_PLAN.md](EVALUATION_PLAN.md); it adds no measurement of its own.
+
+| Quality focus | Prototype measure | Scoring | Evidence source |
+| --- | --- | --- | --- |
+| Functional suitability | correctness, groundedness, citation entailment | human, rubric-scored | answerable test cases with gold chunks |
+| Performance efficiency | latency, throughput, peak VRAM | automatic, ≥3 runs | controlled test-environment logs |
+| Response-handling reliability | correct answer or referral route; coverage and selective risk | automatic | all three query strata |
+| Source traceability | citation validity (identifier resolves to supplied evidence) | automatic | local knowledge-base metadata |
 
 ## Required wording in the manuscript
 

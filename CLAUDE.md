@@ -2,59 +2,69 @@
 
 ## What this repo is
 
-Undergraduate Computer Engineering thesis: **Optimizing Local Small Language Models Using 4-Bit Quantization, QLoRA, and RAG for University Helpdesks**. It is a controlled prototype evaluation, not a production system. `THESIS_BATTLE_PLAN.md` is the governing document — it overrides any conflicting detail in other markdown notes (`README.md`, `ArchitectureAndDesign.md`, `prompt_and_routing_architecture.md`, `ISO_STANDARDS_AND_THESIS_CONTEXT.md`, `consultation/*`).
+Undergraduate CpE thesis: **Optimizing Local Small Language Models Using 4-Bit Quantization, QLoRA, and RAG for University Helpdesks**. Controlled prototype evaluation, not production. Currently in **proposal phase** (Chapters 1–3), building this routing PoC ahead of the real prototype.
+
+`THESIS_BATTLE_PLAN.md` governs; it overrides `README.md`, `ArchitectureAndDesign.md`, `prompt_and_routing_architecture.md`, `EVALUATION_PLAN.md`, `ISO_STANDARDS_AND_THESIS_CONTEXT.md`.
+
+`consultation/*` is **superseded** (an earlier, larger scope: clarification route, multilingual eval, reranking, Q2 adapter, concurrency testing, prompt variants). Design rationale only — don't cite it or reintroduce its scope; `EVALUATION_PLAN.md` lists each exclusion explicitly.
 
 ## Locked study decisions (do not silently deviate)
 
-- One selected locally hosted SLM — final model not yet fixed.
-- English queries only; retrieval is hybrid (BM25 lexical + dense embedding with RRF fusion) — the overall system is hybrid-RAG: both retrievers fetch passage candidates, RRF reranks them, a disjunctive sufficiency gate admits answers when either component's evidence exceeds its threshold, and the SLM generates a cited answer.
-- Two routing outcomes only: supported cited RAG answer, or predefined non-answer/office referral. No clarification route.
-- QLoRA adapts response *behavior* (citation formatting, conciseness, non-answer handling) — never trains in university facts. Facts live only in the LMS corpus.
-- Every comparison (base vs QLoRA, 4-bit vs higher-precision reference) must hold corpus, prompt, query set, decoding settings, and hardware constant.
+- One locally hosted SLM, final model not yet fixed.
+- English queries only. Retrieval is hybrid-RAG: BM25 (lexical) + dense embedding fetch candidates, RRF fuses rankings, a disjunctive sufficiency gate admits answers when either component exceeds its own threshold, then the SLM generates one cited answer.
+- Two routing outcomes only: cited RAG answer, or predefined non-answer/office referral. No clarification route.
+- QLoRA adapts response *behavior* (citation formatting, conciseness, non-answer handling) — never trains in facts. Facts live only in the LMS corpus.
+- Every comparison (base vs QLoRA, 4-bit vs higher-precision reference) holds corpus, prompt, query set, decoding settings, and hardware constant.
 - Test environment: 8 GB VRAM.
+- Hybrid is justified by this corpus specifically: form codes (`PNC:AA-FO-45`), acronyms, and figures favor BM25; student phrasing vs. policy register ("can I take a break" → "Leave of Absence") favors dense. Neither alone covers both — this is the Chapter 3 justification, keep it.
 
 ## Architecture
 
-Two-stage pipeline, currently developed as a routing proof-of-concept ahead of the real local-SLM integration:
-
 ```
 PDFs (rag_pipeline/data/raw/)
-  -> rag_pipeline/data_cleaning.py   (Stage 1+2: layout-aware extraction + cleaning)
-  -> rag_pipeline/data/sanitize/*.jsonl   (one cleaned JSONL per source PDF)
-  -> rag_pipeline/chunk_documents.py   (Stage 3, partial: stitch-then-split chunking)
-  -> rag_pipeline/data/chunks/*.jsonl   (one chunked JSONL per source PDF)
-  -> [not yet wired: loading chunks into routing/data/corpus.json]
+  -> data_cleaning.py -> data/sanitize/*.jsonl
+  -> chunk_documents.py -> data/chunks/*.jsonl   [done: 364 chunks total, 22/234/108]
+  -> build_corpus.py -> routing/data/corpus.json [done: 364 real passages, replaces the old 5-entry placeholder]
 
-English query -> routing/router.py orchestrates three gates:
-  Gate 1  routing/scope_gate.py   embedding-similarity scope check (no LLM call)
-  Gate 2  routing/retriever.py    BM25 retrieval + evidence-score threshold (no LLM call)
-  Gate 3  routing/generator.py    single cited RAG generation call (the only LLM call)
+English query -> routing/router.py orchestrates three gates, retrieval before scope:
+  Gate 2  retriever.py    BM25 done; dense + RRF + disjunctive gate NOT YET IMPLEMENTED (BM25 only today)
+  Gate 1  scope_gate.py   embedding cosine-similarity vs labeled exemplars (no LLM, no training) —
+                          runs every query, but only consulted when Gate 2 finds insufficient evidence
+  Gate 3  generator.py    single cited RAG call — currently gpt-4o-mini, swap for local SLM before any reported result
 ```
 
-- `routing/config.py` centralizes all tunables (model names, thresholds, paths, prompt contract). Change behavior here, not by hardcoding in the gates.
-- Gate 1 (`routing/scope_gate.py`) is NOT a trained classifier — deliberately, to avoid adding a training/evaluation burden to the thesis. It does a cosine-similarity nearest-neighbor lookup against labeled exemplar queries using a frozen pretrained embedding model (`bge-small-en-v1.5`, 512-token max). Gate 2 (dense retrieval) uses the same model so the query is embedded once and reused. No gradient update happens. Keep it this way — do not introduce a trained classifier here.
-- Gate 2 (`routing/retriever.py`) now orchestrates both BM25 (lexical) and dense (embedding-based) retrieval, fuses their rankings via RRF, and checks sufficiency as a disjunction: lexical_ok OR dense_ok, where each has its own calibrated threshold. Refer only when both retrievers fail their component gates.
-- `SCOPE_SIMILARITY_THRESHOLD`, `BM25_COVERAGE_THRESHOLD`, `DENSE_SCORE_THRESHOLD`, and `RRF_K` in `routing/config.py` are placeholder values — must be calibrated against a labeled eval set before results are meaningful.
+- `routing/config.py` centralizes all tunables — change behavior there, not by hardcoding in the gates.
+- Gate 1 and Gate 2's dense half share one embedding model (`bge-small-en-v1.5`), embedded once per query. Gate 1 stays a frozen nearest-neighbor lookup — do not introduce a trained classifier.
+- No vector database. Chunk embeddings live in an in-memory NumPy array (same pattern as `scope_gate.py`), cached to `.npy` so they aren't recomputed each run. Exhaustive cosine similarity over 364 chunks is exact and sub-millisecond — do not add Chroma/FAISS/Pinecone.
+- `SCOPE_SIMILARITY_THRESHOLD`, `BM25_COVERAGE_THRESHOLD`, `DENSE_SCORE_THRESHOLD`, `RRF_K` are placeholders — calibrate against a labeled eval set.
+- Resolved: Gate 1 runs after Gate 2, not before, and only decides the *reason* for a non-answer (out-of-scope vs. referral) when retrieval alone is insufficient. This removes the false-out-of-scope failure mode (a paraphrased in-scope query rejected before retrieval could match it) at no extra cost — retrieval over 364 chunks is milliseconds against the generator's latency. `scope_similarity` is still logged on every query, including the answer path, so a false-rejection rate under the old ordering can be reported from that log.
+
+## Evaluation
+
+Full design lives in `EVALUATION_PLAN.md` — configurations, query-set strata, pooling protocol, effort budget, triage order. Facts that constrain code:
+
+- Three configs (A=base, B=QLoRA, C=higher-precision), all at hybrid retrieval, one-factor-at-a-time from shared anchor A — not a factorial grid.
+- Retrieve once per query, cache, replay identical evidence across A/B/C.
+- Report Recall@k for **k ≤ 10 only** (the pooling protocol only covers that far).
 
 ## Commands
 
 ```bash
-# Data cleaning + chunking (run from repo root or rag_pipeline/, paths are self-relative)
 python rag_pipeline/data_cleaning.py
 python rag_pipeline/chunk_documents.py
+python rag_pipeline/build_corpus.py   # writes routing/data/corpus.json from the real chunks
 
-# Routing PoC
 cd routing
 pip install -r requirements.txt
-cp .env.example .env   # then paste OPENAI_API_KEY
+cp .env.example .env   # paste OPENAI_API_KEY
 python main.py --demo   # fixed sample queries
 python main.py          # interactive loop
 ```
 
-There is no configured test runner, linter, or build step in this repo yet (`rag_pipeline/test_chunk_documents.py` exists but is run directly).
+No configured test runner, linter, or build step (`rag_pipeline/test_chunk_documents.py` is run directly).
 
 ## Working conventions
 
-- Hybrid retrieval (BM25 + dense embedding, RRF fusion, disjunctive component gate) is in scope. Do not add reranking beyond RRF, multilingual support, live LMS integration, personal-record handling, or a trained classifier for Gate 1 — explicitly out of scope per `THESIS_BATTLE_PLAN.md`.
-- Prompt contract and output JSON shapes (`decision`/`answer`/`citations`) are fixed by `prompt_and_routing_architecture.md`; keep `routing/config.py`'s `SYSTEM_PROMPT` in sync with it rather than duplicating logic elsewhere.
-- Any cited identifier in a generated answer must be validated against evidence actually supplied to the model before being treated as trustworthy output. The `document_id` field must be fixed-width (prefix-safe) so substring checks never cross document boundaries.
+- Do not add reranking beyond RRF, multilingual support, live LMS integration, or personal-record handling — out of scope per `THESIS_BATTLE_PLAN.md`.
+- Keep `routing/config.py`'s `SYSTEM_PROMPT` in sync with `prompt_and_routing_architecture.md` rather than duplicating the contract elsewhere.
+- Validate every cited identifier against evidence actually supplied to the model before treating it as trustworthy. `document_id` must be fixed-width (prefix-safe) so substring checks never cross document boundaries.

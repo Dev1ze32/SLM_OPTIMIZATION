@@ -8,23 +8,26 @@ This document defines the simple request-handling policy for the prototype. It s
 
 ```text
 English query
-  -> scope check
-  -> hybrid retrieval (BM25 + dense embedding) for in-scope query
+  -> hybrid retrieval (BM25 + dense embedding)
   -> RRF fusion of candidate rankings
   -> disjunctive sufficiency check (lexical OR dense evidence gate)
-  -> supported: one RAG generation call with citations
-  -> unsupported/out of scope: predefined non-answer or office referral
+  -> sufficient: one RAG generation call with citations
+  -> insufficient: scope check decides the non-answer
+       -> out of scope: predefined scope message
+       -> in scope: predefined office referral
 ```
+
+Scope check runs on every query but is only consulted when retrieval comes up short. A query retrieval can already answer is never rejected as out of scope — this avoids rejecting an in-scope, paraphrased query (e.g. "can I take a break?") before retrieval gets the chance to match it against corpus wording (e.g. "Leave of Absence").
 
 ## Routing rules
 
 | Condition | Action | Generator call |
 | --- | --- | --- |
-| Clearly outside university-helpdesk scope | Return brief scope message | 0 |
-| In-scope query with relevant LMS evidence | Generate a concise cited answer | 1 |
-| In-scope query without sufficient LMS evidence | Return non-answer and office referral | 0 |
+| Insufficient evidence AND clearly outside university-helpdesk scope | Return brief scope message | 0 |
+| Sufficient LMS evidence | Generate a concise cited answer | 1 |
+| Insufficient evidence, but in scope | Return non-answer and office referral | 0 |
 
-Do not classify a query as casual conversation merely because BM25 retrieves weak results. A university-related query can fail retrieval because the corpus is incomplete or its wording differs from the document.
+Do not classify a query as casual conversation merely because BM25 retrieves weak results. A university-related query can fail retrieval because the corpus is incomplete or its wording differs from the document. The scope check exists to distinguish these two insufficient-evidence cases from each other, not to gate retrieval itself.
 
 ## Prompt contract
 

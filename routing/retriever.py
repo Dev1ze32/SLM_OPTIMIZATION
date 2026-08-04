@@ -1,11 +1,22 @@
 """
-Gate 2: BM25 retrieval + evidence-sufficiency check.
+Gate 2: retrieval + evidence-sufficiency check.
 
-BM25 is the sole retriever per the locked study decisions (no dense
-retrieval, RRF, or reranking). This module also owns the "is the
-retrieved evidence good enough to answer from" decision. It is kept
-separate from scope_gate.py on purpose: retrieval weakness (corpus gap,
-wording mismatch) must never be read as "out of scope".
+Target design is hybrid: BM25 (lexical) + dense embedding (semantic),
+fused with RRF, with a disjunctive sufficiency gate (lexical_ok OR
+dense_ok). Only the BM25 half is implemented so far — the dense
+retriever, RRF fusion, and the disjunctive gate are still to be wired
+(see EVALUATION_PLAN.md and CLAUDE.md for current status).
+
+Rationale for hybrid on this corpus: BM25 is irreplaceable for exact
+tokens the handbooks are full of (form codes like PNC:AA-FO-45,
+acronyms, figures like "20%" / "5.00"), while dense retrieval covers the
+register gap between how students ask and how policy is written
+("can I take a break" -> "Leave of Absence"). Neither alone covers both.
+
+This module also owns the "is the retrieved evidence good enough to
+answer from" decision. It is kept separate from scope_gate.py on
+purpose: retrieval weakness (corpus gap, wording mismatch) must never be
+read as "out of scope".
 """
 
 import json
@@ -45,7 +56,7 @@ class BM25Retriever:
         self,
         corpus_path: str = config.CORPUS_PATH,
         top_k: int = config.BM25_TOP_K,
-        score_threshold: float = config.BM25_SCORE_THRESHOLD,
+        score_threshold: float = config.BM25_COVERAGE_THRESHOLD,
     ):
         self.top_k = top_k
         self.score_threshold = score_threshold

@@ -2,11 +2,13 @@
 Gate 1: Scope gate.
 
 Decides whether an incoming query belongs to the university-helpdesk
-domain at all, BEFORE retrieval runs. This is intentionally independent
-of BM25 so that weak/failed retrieval is never mistaken for an
-out-of-scope query (see prompt_and_routing_architecture.md: "Do not
-classify a query as casual conversation merely because BM25 retrieves
-weak results.").
+domain at all. Router.route() runs this on every query but only acts on
+the decision when retrieval (Gate 2) comes up short — a query retrieval
+can already answer is never second-guessed by this gate. This is
+intentionally independent of BM25 so that weak/failed retrieval is never
+mistaken for an out-of-scope query (see prompt_and_routing_architecture.md:
+"Do not classify a query as casual conversation merely because BM25
+retrieves weak results.").
 
 Implementation: cosine-similarity nearest-neighbor lookup against a
 small set of labeled in-scope exemplar queries, using a pretrained
