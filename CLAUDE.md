@@ -22,7 +22,9 @@ Undergraduate CpE thesis: **Optimizing Local Small Language Models Using 4-Bit Q
 
 ```
 PDFs (rag_pipeline/data/raw/)
-  -> data_cleaning.py -> data/sanitize/*.jsonl
+  -> data_cleaning.py -> data/sanitize/*.jsonl   [tables: see docs/TABLE_HANDLING_PLAN.md;
+                                                   ambiguous table regions logged to
+                                                   data/sanitize/table_report.json for review]
   -> chunk_documents.py -> data/chunks/*.jsonl   [done: 364 chunks total, 22/234/108]
   -> build_corpus.py -> routing/data/corpus.json [done: 364 real passages, replaces the old 5-entry placeholder]
 
@@ -62,6 +64,8 @@ python main.py          # interactive loop
 ```
 
 No configured test runner, linter, or build step (`rag_pipeline/test_chunk_documents.py` is run directly).
+
+`rag_pipeline`'s dependencies (`fitz`/PyMuPDF, etc.) are installed in a WSL venv at `venv/` (Python 3.13), not the Windows-side Python. Run pipeline scripts through it: `wsl.exe -e bash -lc "cd /mnt/c/.../rag_pipeline && ../venv/bin/python data_cleaning.py"`. Same for `routing/`'s dependencies (`openai`, `rank_bm25`, `sentence_transformers`, `torch`) — that venv has all of them installed already.
 
 ## Working conventions
 

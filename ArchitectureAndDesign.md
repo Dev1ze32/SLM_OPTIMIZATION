@@ -45,6 +45,8 @@ Each indexed passage should retain:
 
 The corpus should contain only materials appropriate for student-facing information. If a document is outdated, missing, or contradictory, record the issue and do not treat the answer as fully supported.
 
+Source PDFs contain tables (fee schedules, grading scales, program-to-hours mappings, outline-style appendices) that must be extracted without inventing row correspondences that aren't in the source or losing indentation that expresses real nesting. [docs/TABLE_HANDLING_PLAN.md](docs/TABLE_HANDLING_PLAN.md) specifies the extraction rules and an ambiguous-case flag report (`data/sanitize/table_report.json`) for anything the extractor can't confidently classify.
+
 ## Retrieval and routing
 
 Retrieval uses a hybrid approach combining lexical and semantic evidence:

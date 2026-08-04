@@ -98,5 +98,6 @@ Excluded: live LMS connection, personal student records, multilingual support, r
 - [prompt_and_routing_architecture.md](prompt_and_routing_architecture.md): prompt contract, routing, output, and citation validation.
 - [EVALUATION_PLAN.md](EVALUATION_PLAN.md): measurement design, query set, annotation protocol, effort budget, triage order.
 - [ISO_STANDARDS_AND_THESIS_CONTEXT.md](ISO_STANDARDS_AND_THESIS_CONTEXT.md): ISO-guided evaluation mapping and thesis boundaries.
+- [docs/TABLE_HANDLING_PLAN.md](docs/TABLE_HANDLING_PLAN.md): PDF table extraction rules (grid vs. outline classification, indent recovery) and the ambiguous-case flag report.
 
 `consultation/` contains superseded design notes from an earlier, larger scope (clarification route, multilingual evaluation, reranking, Q2 adapter, concurrency testing). Retained for design rationale only. Do not cite it in the manuscript or reintroduce its scope.

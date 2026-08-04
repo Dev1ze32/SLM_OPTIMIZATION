@@ -503,20 +503,30 @@ def nearest_preceding_context(blocks, y_start, max_gap=40):
     return label or None
 
 
-def detect_table_rows(lines):
+def detect_table_rows(lines, min_row_cells=TABLE_MIN_ROW_CELLS):
     """Find grid-shaped regions in a page's lines and return them as
     structured rows, so the caller can render cells with a delimiter
     instead of losing column boundaries to a flat space-joined string.
 
-    A band of >=3 lines sharing a y-range opens a table: real prose is one
-    line per y-band (a wrapped paragraph stacks vertically, it doesn't
-    place 3+ independent text fragments side by side), so this generalizes
-    across any document without hardcoding column positions. Once a table
-    is open, whether each following band is a new row or the continuation
-    of a wrapped cell is decided by _is_continuation_band() -- which is
-    what lets a header wrapping across every column ("RESEARCH/PROPOSAL/
-    FINAL" over "ENGAGEMENT/DEFENSE/DEFENSE") merge into one row while a
-    sparse-but-real row ("Chapter IV", no Proposal value) stays separate.
+    A band of >=min_row_cells lines sharing a y-range opens a table: real
+    prose is one line per y-band (a wrapped paragraph stacks vertically,
+    it doesn't place independent text fragments side by side), so this
+    generalizes across any document without hardcoding column positions.
+    Once a table is open, whether each following band is a new row or the
+    continuation of a wrapped cell is decided by _is_continuation_band()
+    -- which is what lets a header wrapping across every column
+    ("RESEARCH/PROPOSAL/FINAL" over "ENGAGEMENT/DEFENSE/DEFENSE") merge
+    into one row while a sparse-but-real row ("Chapter IV", no Proposal
+    value) stays separate.
+
+    min_row_cells defaults to TABLE_MIN_ROW_CELLS (3) for the normal,
+    whole-page pass. A 2-column key->value table's rows only ever have 2
+    cells, so that pass can never open a table for one -- callers that
+    need to test a specific region for 2-column grid structure (see
+    clean_document's outline-vs-grid disambiguation) pass
+    min_row_cells=2 explicitly. Left at the default everywhere else so
+    ordinary 2-line bands of unrelated prose don't start reading as
+    tables.
 
     Column positions are taken from the first row, so a continuation is
     only merged into a column the table actually has. Rows are stored in
@@ -592,7 +602,7 @@ def detect_table_rows(lines):
                 cur_y_end = max(cur_y_end, max(c[3] for c in cells))
                 continue
 
-        if len(cells) >= TABLE_MIN_ROW_CELLS:
+        if len(cells) >= min_row_cells:
             if cur_rows:
                 flush()
                 cur_rows = []
@@ -705,14 +715,128 @@ def _join_wrapped(head, tail):
     return re.sub(r"\s{2,}", " ", (head + " " + tail).strip())
 
 
-def _append_outline_item(items, text):
-    if items and (_looks_incomplete(items[-1]) or _looks_like_continuation(text)):
-        items[-1] = _join_wrapped(items[-1], text)
+def _append_outline_item(items, text, x0):
+    """Append (or fold a wrap into) one outline item, tracking the x0 its
+    OWN first line started at -- not a continuation line's x0, which can
+    drift a little without meaning a different indent level. Depth is
+    resolved later, once every item in the column is known, by
+    _indent_depths."""
+    if items and (_looks_incomplete(items[-1]["text"]) or _looks_like_continuation(text)):
+        items[-1]["text"] = _join_wrapped(items[-1]["text"], text)
     else:
-        items.append(text)
+        items.append({"text": text, "x0": x0})
+
+
+OUTLINE_INDENT_X_TOL = 3.0
+# Deliberately much tighter than TABLE_COL_X_TOL (15pt): that tolerance
+# exists to match a wrapped table cell back to its own column, where a
+# 10+pt drift is still "the same column". Outline indent steps in these
+# manuals run only ~5.7-8.5pt apart (measured: 40.12 -> 45.79 -> 54.30),
+# so TABLE_COL_X_TOL would merge all three indent levels into one and
+# was tried first -- it flattened every outline to depth 0. This value
+# sits below the smallest observed real step so distinct levels don't
+# collapse, while still absorbing same-level rendering jitter (observed
+# at 0.0pt here, but not assumed to always be exactly zero).
+
+
+def _indent_depths(x0_values, tol=OUTLINE_INDENT_X_TOL):
+    """Cluster a column's item x0 positions into indent levels (0 =
+    shallowest) and return each value's depth, in the same input order.
+
+    A PDF outline's nesting is visible only as horizontal offset --
+    "Title Page" sits to the right of "Preliminaries" because it's
+    indented under it, with no other marker in the extracted text. This
+    recovers that structure with the same greedy tolerance-band grouping
+    _column_index uses for table columns elsewhere in this file (see
+    OUTLINE_INDENT_X_TOL above for why the tolerance itself differs): x0
+    values are sorted, and each one joins the previous cluster when
+    within `tol`, so a line or two of extraction jitter doesn't
+    manufacture a level that isn't really there. Depths are relative to
+    this outline's own leftmost items, not the page's absolute geometry,
+    since what matters for rendering is levels relative to each other."""
+    order = sorted(range(len(x0_values)), key=lambda i: x0_values[i])
+    cluster_reps = []
+    depth_by_index = {}
+    for i in order:
+        x = x0_values[i]
+        if cluster_reps and x - cluster_reps[-1] <= tol:
+            depth_by_index[i] = len(cluster_reps) - 1
+        else:
+            cluster_reps.append(x)
+            depth_by_index[i] = len(cluster_reps) - 1
+    return [depth_by_index[i] for i in range(len(x0_values))]
+
+
+def _starts_with_list_marker(text):
+    """True when `text`'s first token is a bullet glyph or an enumerator
+    ("a.", "iv)", "A."). Used to sanity-check a depth increase: a real
+    sub-item in these manuals is introduced by one of these; deeper
+    indentation with no marker at all is more likely a wrapped
+    continuation the merge heuristic missed (see
+    detect_paired_outline's docstring on the deliberate under-merge) than
+    a genuine new nesting level."""
+    first = text.strip().split(None, 1)
+    if not first:
+        return False
+    token = first[0]
+    return bool(BULLET_MARKER_PATTERN.match(token) or ENUMERATOR_PATTERN.match(token))
+
+
+def _unmarked_depth_increases(items):
+    """Indices of a specific shape: an unmarked item that is the ONLY
+    item at a new, deeper level before the outline drops back to the
+    depth it came from -- e.g. "D. Research Ethics Review Committee"
+    (depth 1) -> "Evaluation" (depth 2, alone) -> "E. Short report..."
+    (depth 1 again). Flagged as a probable missed wrap: "Evaluation" is
+    the tail of "D."'s own name, split across two PDF lines with no cue
+    _looks_incomplete recognizes (see detect_paired_outline's docstring
+    on the deliberate under-merge), rendered as a bogus sub-item instead.
+
+    Restricted to lone, single-item spans on purpose. A depth increase
+    that continues for several items (a chapter heading followed by its
+    real multi-item sub-list, e.g. "Chapter III" -> "Research Design",
+    "Respondents of the Study", ...) is the ordinary, expected shape of
+    these outlines -- flagging every such transition buried the rare
+    real defect under dozens of routine ones during testing. A marked
+    item ("• Data Gathering Tools") is never flagged regardless of span
+    length; the marker is confirmation enough that it's a real
+    sub-item."""
+    flagged = []
+    for i in range(1, len(items)):
+        if items[i]["depth"] <= items[i - 1]["depth"]:
+            continue
+        if _starts_with_list_marker(items[i]["text"]):
+            continue
+        span_end = next(
+            (j for j in range(i + 1, len(items))
+             if items[j]["depth"] <= items[i - 1]["depth"]),
+            len(items),
+        )
+        if span_end == i + 1:
+            flagged.append(i)
+    return flagged
 
 
 GRID_PREFERENCE_COVERAGE = 0.30
+# A ratio landing in this band could plausibly have gone either way --
+# flagged for the table report regardless of which side of
+# GRID_PREFERENCE_COVERAGE it fell on. Outside this band the call is
+# comfortable enough not to need a human look.
+GRID_COVERAGE_FLAG_BAND = (0.15, 0.50)
+
+
+def _grid_coverage_ratio(grid_tables, lines, y_start, y_end):
+    """Fraction of a region's row-bands that grid detection explains.
+    Factored out of _grid_covers_region so callers that need the raw
+    ratio (e.g. flagging a call that landed close to the threshold
+    either way) don't have to duplicate the band/coverage arithmetic."""
+    bands = len(group_into_row_bands(
+        [l for l in lines if y_start - 1 <= l[1] and l[3] <= y_end + 1]))
+    if not bands:
+        return 0.0
+    covered = sum(len(t["rows"]) for t in grid_tables
+                  if t["y_start"] >= y_start - 1 and t["y_end"] <= y_end + 1)
+    return covered / bands
 
 
 def _grid_covers_region(grid_tables, lines, y_start, y_end):
@@ -732,13 +856,8 @@ def _grid_covers_region(grid_tables, lines, y_start, y_end):
     no wording, looking exactly like a mapping. Grid detection settles it
     instead: a real mapping resolves into aligned rows across much of the
     region, while parallel outlines yield almost none."""
-    bands = len(group_into_row_bands(
-        [l for l in lines if y_start - 1 <= l[1] and l[3] <= y_end + 1]))
-    if not bands:
-        return False
-    covered = sum(len(t["rows"]) for t in grid_tables
-                  if t["y_start"] >= y_start - 1 and t["y_end"] <= y_end + 1)
-    return covered / bands >= GRID_PREFERENCE_COVERAGE
+    return (_grid_coverage_ratio(grid_tables, lines, y_start, y_end)
+            >= GRID_PREFERENCE_COVERAGE)
 
 
 def _is_outline_header_band(cells):
@@ -783,8 +902,14 @@ def detect_paired_outline(lines):
     item it doesn't belong to, and every item is still captured, just
     possibly split. No text is ever dropped.
 
+    Each item's indent depth is recovered from its horizontal offset (see
+    _indent_depths) -- these outlines nest ("Title Page" under
+    "Preliminaries", bullets under "Data Gathering Procedure"), and depth
+    is the only place that structure survives; it is otherwise invisible
+    once the line is flattened to text.
+
     Returns a list of {"y_start", "y_end", "headers": [h1, h2],
-    "columns": {h1: [...], h2: [...]}}.
+    "columns": {h1: [{"text", "depth"}, ...], h2: [...]}}.
     """
     bands = group_into_row_bands(lines)
     results = []
@@ -817,17 +942,24 @@ def detect_paired_outline(lines):
                 _append_outline_item(
                     left_items,
                     " ".join(normalize_text(c[4], keep_trailing_hyphen=True)
-                             for c in left_cells))
+                             for c in left_cells),
+                    min(c[0] for c in left_cells))
             if right_cells:
                 _append_outline_item(
                     right_items,
                     " ".join(normalize_text(c[4], keep_trailing_hyphen=True)
-                             for c in right_cells))
+                             for c in right_cells),
+                    min(c[0] for c in right_cells))
             y_end = max(y_end, max(c[3] for c in bcells))
             j += 1
 
-        left_items = [strip_soft_hyphen(t) for t in left_items]
-        right_items = [strip_soft_hyphen(t) for t in right_items]
+        def _finalize(items):
+            texts = [strip_soft_hyphen(it["text"]) for it in items]
+            depths = _indent_depths([it["x0"] for it in items])
+            return [{"text": t, "depth": d} for t, d in zip(texts, depths)]
+
+        left_items = _finalize(left_items)
+        right_items = _finalize(right_items)
 
         if len(left_items) + len(right_items) >= OUTLINE_MIN_ITEMS:
             results.append({
@@ -847,14 +979,19 @@ def detect_paired_outline(lines):
 
 
 def render_paired_outline(table):
-    """Single-line, order-preserving flattening for the `text` field
-    (which stays fully flattened for every page, table or not); the
-    structured {header: [items]} form lives in the page record's
-    `tables` field for anything that needs the real list boundaries."""
-    parts = []
+    """One item per line, indented per its recovered depth (see
+    _indent_depths), as a markdown-style nested list -- unlike prose,
+    which stays flattened to one line by normalize_text's newline-to-
+    space pass. The old single-line "H: a; b; c || H2: x; y; z" form
+    discarded which items nest under which; this keeps that structure in
+    the corpus, matching render_table's precedent of using newlines to
+    keep grid column/row boundaries out of the flattened prose."""
+    lines = []
     for header, items in table["columns"].items():
-        parts.append(f"{header}: " + "; ".join(items))
-    return " || ".join(parts)
+        lines.append(f"{header}:")
+        for item in items:
+            lines.append("  " * item["depth"] + "- " + item["text"])
+    return "\n".join(lines)
 
 
 TOC_LINE_PATTERNS = [
@@ -961,6 +1098,15 @@ def clean_document(src):
 
     cleaned = []
     stats = Counter()
+    # Ambiguous table-region calls collected for human review (written to
+    # data/sanitize/table_report.json by process_all). The classification
+    # rules here are simple by design -- see docs/TABLE_HANDLING_PLAN.md --
+    # so flagging what's uncertain matters more than refining the rules
+    # further. Over-flagging is the intended tradeoff: a handful of
+    # false-positive flags cost minutes to dismiss by hand, while a silent
+    # misclassification ships a fabricated row-correspondence or a bogus
+    # nesting level into the corpus unnoticed.
+    table_flags = []
     # Label carried across logical pages: these tables run longer than one
     # half-page and repeat their header at the top of each continuation,
     # where there is no heading above them to read a label from. Without
@@ -1009,16 +1155,91 @@ def clean_document(src):
         # a row-correspondent table rather than two independent outlines,
         # so it is handed back to the grid path to keep its rows -- see
         # _grid_covers_region.
+        def _flag(reason, o, **detail):
+            # A table continuing onto this page has no heading of its own
+            # to read a context label from (nearest_preceding_context
+            # returns None) -- fall back to the label carried from the
+            # page where it started, same as the real `tables` context
+            # resolution below does for `last_table_label`.
+            context = nearest_preceding_context(all_blocks, o["y_start"])
+            if context is None:
+                context = last_table_label.get(tuple(o.get("headers") or ()))
+            table_flags.append({
+                "source_file": Path(src).name,
+                "pdf_page": entry["pdf_page"],
+                "side": entry["side"],
+                "printed_page": printed_page,
+                "y_start": o["y_start"],
+                "y_end": o["y_end"],
+                "context": context,
+                "reason": reason,
+                **detail,
+            })
+
         probe = detect_table_rows(content_lines)
-        outlines = [
-            o for o in detect_paired_outline(content_lines)
-            if not _grid_covers_region(probe, content_lines, o["y_start"], o["y_end"])
-        ]
-        consumed = {ln for o in outlines
-                    for ln in content_lines
-                    if o["y_start"] - 1 <= ln[1] and ln[3] <= o["y_end"] + 1}
+        outlines = []
+        recovered_grids = []
+        for o in detect_paired_outline(content_lines):
+            ratio = _grid_coverage_ratio(probe, content_lines, o["y_start"], o["y_end"])
+            if GRID_COVERAGE_FLAG_BAND[0] <= ratio <= GRID_COVERAGE_FLAG_BAND[1]:
+                _flag("grid_coverage_near_threshold", o, coverage_ratio=round(ratio, 3))
+            if ratio >= GRID_PREFERENCE_COVERAGE:
+                continue
+            # The whole-page probe above uses the default min_row_cells=3,
+            # so it can never open a table for a 2-column region -- a
+            # genuine key->value table (e.g. "PROGRAM" -> "# OF HOURS")
+            # always reads as "not grid-covered" there and would fall
+            # through as a false outline, rendered column-major with no
+            # row correspondence. Re-probe just this candidate's own lines
+            # with the row-open threshold relaxed to 2; if THAT resolves
+            # into aligned rows across the region, it is a real table, and
+            # those rows -- not the outline reading -- are what get kept.
+            scoped_lines = [
+                l for l in content_lines
+                if o["y_start"] - 1 <= l[1] and l[3] <= o["y_end"] + 1
+            ]
+            scoped_probe = detect_table_rows(scoped_lines, min_row_cells=2)
+            scoped_ratio = _grid_coverage_ratio(
+                scoped_probe, content_lines, o["y_start"], o["y_end"])
+            if GRID_COVERAGE_FLAG_BAND[0] <= scoped_ratio <= GRID_COVERAGE_FLAG_BAND[1]:
+                _flag("grid_coverage_near_threshold_2col", o,
+                      coverage_ratio=round(scoped_ratio, 3))
+            if scoped_ratio >= GRID_PREFERENCE_COVERAGE:
+                recovered_grids.extend(scoped_probe)
+                continue
+
+            left_count = len(o["columns"].get(o["headers"][0], []))
+            right_count = len(o["columns"].get(o["headers"][1], []))
+            if left_count == right_count and left_count > 0:
+                # Shape most likely to actually be a row-paired table that
+                # neither probe's grid detection caught -- e.g. columns
+                # too irregular in x-position for detect_table_rows to
+                # resolve into aligned bands. Kept as an outline (safe
+                # default) but flagged rather than silently trusted.
+                _flag("outline_equal_column_counts", o, item_count=left_count)
+
+            for header in o["headers"]:
+                items = o["columns"][header]
+                for i in _unmarked_depth_increases(items):
+                    _flag("possible_unmerged_wrap", o, column=header,
+                          item_text=items[i]["text"][:80],
+                          preceding_text=items[i - 1]["text"][:80])
+
+            outlines.append(o)
+
+        consumed = {
+            ln for o in outlines
+            for ln in content_lines
+            if o["y_start"] - 1 <= ln[1] and ln[3] <= o["y_end"] + 1
+        } | {
+            ln for t in recovered_grids
+            for ln in content_lines
+            if t["y_start"] - 1 <= ln[1] and ln[3] <= t["y_end"] + 1
+        }
         grid_tables = detect_table_rows(
             [l for l in content_lines if l not in consumed])
+        grid_tables.extend(recovered_grids)
+        grid_tables.sort(key=lambda t: t["y_start"])
 
         tables = (
             [{"type": "grid", **t} for t in grid_tables]
@@ -1122,7 +1343,7 @@ def clean_document(src):
             ],
         })
 
-    return cleaned, stats, boilerplate
+    return cleaned, stats, boilerplate, table_flags
 
 
 def process_all():
@@ -1142,9 +1363,15 @@ def process_all():
         return {}
 
     summary = {}
+    all_table_flags = []
     for pdf_path in pdf_paths:
         print(f"\n===== {pdf_path.name} =====")
-        cleaned, stats, boilerplate = clean_document(src=str(pdf_path))
+        cleaned, stats, boilerplate, table_flags = clean_document(src=str(pdf_path))
+        all_table_flags.extend(table_flags)
+        if table_flags:
+            print(f"Table report: {len(table_flags)} region(s) flagged for review:")
+            for f in table_flags:
+                print(f"  - p.{f['printed_page']} [{f['reason']}] {f.get('context', '')!r:.60}")
 
         print("Logical pages extracted:", len(cleaned))
         print("Page type breakdown:", dict(stats))
@@ -1169,7 +1396,14 @@ def process_all():
             "content_chars": content_chars,
             "stats": dict(stats),
             "output": str(out_path),
+            "table_flags": len(table_flags),
         }
+
+    report_path = OUT_DIR / "table_report.json"
+    with open(report_path, "w", encoding="utf-8") as f:
+        json.dump(all_table_flags, f, ensure_ascii=False, indent=2)
+    print(f"\n{len(all_table_flags)} table region(s) flagged across all documents "
+          f"-> {report_path}")
 
     return summary
 
