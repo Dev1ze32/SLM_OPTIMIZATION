@@ -11,7 +11,7 @@ The study is a **controlled prototype evaluation**, not a production deployment,
 - One selected locally hosted Small Language Model; the final model name is intentionally not fixed here.
 - English university-related queries only.
 - Selected student-facing handbooks, rules, policies, and related materials from the University LMS form the local corpus.
-- BM25 lexical retrieval is the only retrieval method in the prototype.
+- Hybrid retrieval (BM25 lexical + dense embedding) retrieves passages; RRF fusion reranks candidates; disjunctive sufficiency gate admits answers when either retriever exceeds its threshold.
 - RAG produces answers from retrieved LMS passages with document/page or section citations.
 - Lightweight routing returns either a supported RAG answer or a predefined non-answer/office referral. No clarification route is promised.
 - QLoRA trains helpdesk behavior, not changeable university facts.
@@ -37,7 +37,7 @@ All outputs -> quality and performance evaluation
 | --- | --- | --- |
 | 1. Local 4-bit model | Configure selected SLM on the test environment | Reproducible configuration and resource log |
 | 2. Knowledge base | Prepare selected LMS materials and citation metadata | Traceable local corpus |
-| 3. BM25 RAG | Retrieve passages and generate cited English answers | Working prototype flow |
+| 3. Hybrid retrieval RAG | Retrieve passages (BM25 + dense embedding, RRF fusion) and generate cited English answers | Working prototype flow |
 | 4. Routing | Handle supported, unsupported, and out-of-scope queries | Documented response paths |
 | 5. QLoRA | Train behavior-only adapter and compare with base model | Quality comparison under identical RAG |
 | 6. Performance | Compare 4-bit and higher-precision reference | Latency, throughput, and VRAM results |
@@ -55,9 +55,9 @@ The evaluation dataset should include English queries with supporting LMS eviden
 
 ## Scope boundaries
 
-Included: offline prototype, selected student-facing LMS documents available to students, English queries, BM25 RAG, QLoRA behavior adaptation, 4-bit performance testing, and controlled evaluation.
+Included: offline prototype, selected student-facing LMS documents available to students, English queries, hybrid retrieval RAG (BM25 + dense embedding with RRF fusion), QLoRA behavior adaptation, 4-bit performance testing, and controlled evaluation.
 
-Excluded: live LMS connection, personal student records, multilingual support, dense/hybrid retrieval, reranking, calibrated classifier research, user-satisfaction study, high-concurrency service, production deployment, and ongoing maintenance.
+Excluded: live LMS connection, personal student records, multilingual support, reranking beyond RRF, calibrated classifier research (Gate 1 remains an exemplar-based nearest-neighbor lookup), user-satisfaction study, high-concurrency service, production deployment, and ongoing maintenance.
 
 ## Execution order
 
@@ -72,9 +72,10 @@ Excluded: live LMS connection, personal student records, multilingual support, d
 ## Risks to manage
 
 - LMS material may be incomplete, outdated, or inconsistent; record source dates and limitations.
-- BM25 may miss synonyms or paraphrases; report this as a retrieval limitation rather than adding dense retrieval without approval.
+- Hybrid retrieval (BM25 handles keyword/exact-token queries; dense embedding handles paraphrase/intent) reduces the likelihood either retriever alone misses relevant passage. The disjunctive sufficiency gate admits answers when either retriever exceeds its component threshold, not when both fail.
 - A full-precision configuration may not fit the test environment; use a feasible higher-precision reference and document it.
 - RAG and citations reduce unsupported answers but do not guarantee correctness; preserve the non-answer/referral path.
+- The evaluation must demonstrate that hybrid retrieval performs better than BM25 or dense alone, justifying the added complexity.
 
 ## Document map
 

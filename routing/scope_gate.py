@@ -18,6 +18,12 @@ Cost profile: single small forward pass through a lightweight embedding
 model (tens of MB, comfortably CPU-capable). It does NOT touch the SLM,
 so it never stacks onto generation latency the way an LLM-based scope
 prompt would.
+
+Device: pinned to CPU (config.EMBEDDING_DEVICE), deliberately. The
+deployment target is a 4-bit quantized SLM on 8 GB VRAM and the SLM needs
+all of it; any VRAM this gate allocates competes directly with generation.
+sentence-transformers auto-selects cuda when no device is passed, so the
+device argument below is load-bearing, not decoration.
 """
 
 import json
@@ -25,6 +31,7 @@ import time
 from dataclasses import dataclass
 
 import numpy as np
+import torch
 from sentence_transformers import SentenceTransformer
 
 import config
@@ -44,22 +51,33 @@ class ScopeGate:
         exemplars_path: str = config.SCOPE_EXEMPLARS_PATH,
         model_name: str = config.EMBEDDING_MODEL,
         threshold: float = config.SCOPE_SIMILARITY_THRESHOLD,
+        device: str = config.EMBEDDING_DEVICE,
+        cpu_threads: int = config.EMBEDDING_CPU_THREADS,
     ):
+        load_start = time.perf_counter()
+
         self.threshold = threshold
-        self.model = SentenceTransformer(model_name)
+        self.device = device
+        if device == "cpu" and cpu_threads:
+            torch.set_num_threads(cpu_threads)
+        self.model = SentenceTransformer(model_name, device=device)
 
         with open(exemplars_path, "r", encoding="utf-8") as f:
             self.exemplars = json.load(f)["in_scope_examples"]
 
         # Pre-embed exemplars once at startup, not per query.
         self.exemplar_embeddings = self.model.encode(
-            self.exemplars, normalize_embeddings=True
+            self.exemplars, normalize_embeddings=True, device=self.device
         )
+
+        self.load_latency_ms = (time.perf_counter() - load_start) * 1000
 
     def check(self, query: str) -> ScopeDecision:
         start = time.perf_counter()
 
-        query_embedding = self.model.encode([query], normalize_embeddings=True)[0]
+        query_embedding = self.model.encode(
+            [query], normalize_embeddings=True, device=self.device
+        )[0]
         similarities = self.exemplar_embeddings @ query_embedding
 
         best_idx = int(np.argmax(similarities))

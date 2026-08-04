@@ -2,15 +2,16 @@
 
 ## Purpose
 
-This document defines the simple request-handling policy for the prototype. It supports the BM25-RAG, English-only, prototype-only study described in [THESIS_BATTLE_PLAN.md](THESIS_BATTLE_PLAN.md).
+This document defines the simple request-handling policy for the prototype. It supports the hybrid-retrieval RAG, English-only, prototype-only study described in [THESIS_BATTLE_PLAN.md](THESIS_BATTLE_PLAN.md).
 
 ## Request flow
 
 ```text
 English query
   -> scope check
-  -> BM25 retrieval for in-scope query
-  -> evidence check
+  -> hybrid retrieval (BM25 + dense embedding) for in-scope query
+  -> RRF fusion of candidate rankings
+  -> disjunctive sufficiency check (lexical OR dense evidence gate)
   -> supported: one RAG generation call with citations
   -> unsupported/out of scope: predefined non-answer or office referral
 ```

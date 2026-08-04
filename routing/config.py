@@ -23,6 +23,12 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 # the model already knows how to embed text: we just do a nearest-
 # neighbor cosine-similarity lookup against labeled exemplar queries.
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+# Gate 1 must never allocate VRAM: the 4-bit SLM needs all 8 GB. Left
+# unset, sentence-transformers auto-selects cuda whenever it is available.
+EMBEDDING_DEVICE = "cpu"
+# Caps torch's CPU thread pool so Gate 1 doesn't grab every core by
+# default; keeps CPU-side latency numbers comparable across runs.
+EMBEDDING_CPU_THREADS = 4
 SCOPE_SIMILARITY_THRESHOLD = 0.50  # tune against your labeled eval set
 
 # --- Gate 2: evidence gate ---
