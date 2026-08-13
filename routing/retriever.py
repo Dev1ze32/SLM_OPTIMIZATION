@@ -37,6 +37,8 @@ class Passage:
     revision_date: str
     page_or_section: str
     text: str
+    year: str = "not available"
+    issuing_office: str = "Unknown"
 
 
 @dataclass
