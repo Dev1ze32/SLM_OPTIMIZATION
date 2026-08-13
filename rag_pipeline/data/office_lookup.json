@@ -1,0 +1,107 @@
+{
+  "version": 1,
+  "created": "2026-08-08",
+  "status": "DRAFT - NEEDS HUMAN REVIEW. Entries with confirmed=false are the researcher's best-effort assignment and must be verified against the actual UC-PnC organizational structure before any result is reported.",
+  "note": "Section -> issuing_office mapping for Objective 3, consumed by Objective 5's referral path. Researcher-constructed, versioned artifact: it makes explicit the organization-by-responsible-unit that the three manuals already follow. It is NOT extracted from the source text. Office NAMES in office_vocabulary were harvested from the manuals' own prose (frequency counts in name_evidence) rather than invented; the section->office ASSIGNMENTS below are editorial judgement.",
+
+  "office_vocabulary": [
+    "Office of the University Registrar",
+    "Student Affairs and Services Department",
+    "Guidance and Counseling Department",
+    "University Library",
+    "University Health Department",
+    "Sports and Development Department",
+    "Research and Development Department",
+    "Knowledge Management and Innovation Department",
+    "Linkages Department",
+    "Management Information Systems Department",
+    "Student Discipline Office",
+    "Cashier's Office",
+    "Accounting Department"
+  ],
+
+  "name_evidence": {
+    "_comment": "Occurrences of each name in the 364-passage corpus text. Names with 0 occurrences were NOT invented - they are absent, which is itself the finding.",
+    "Office of the University Registrar": 32,
+    "Student Affairs and Services Department": 17,
+    "University Health Department": 16,
+    "Guidance and Counseling Department": 15,
+    "Research and Development Department": 10,
+    "Cashier's Office": 10,
+    "Sports and Development Department": 8,
+    "Student Discipline Office": 7,
+    "Knowledge Management and Innovation Department": 6,
+    "University Library": 5,
+    "Linkages Department": 5,
+    "Management Information Systems Department": 3,
+    "Accounting Department": 2
+  },
+
+  "excluded_from_vocabulary": {
+    "_comment": "Office-like names that appear in the corpus but are EXTERNAL agencies, not campus offices a student can be referred to. Same false-positive class the Data Sourcing Appendix flagged for 'Patent Office' in the IP chapter.",
+    "Department of Education": "external national agency",
+    "CHED Regional Office": "external national agency"
+  },
+
+  "open_questions": [
+    "SCHOLARSHIP: assigned to Student Affairs and Services Department as an explicit PLACEHOLDER at the user's direction (2026-08-08), pending confirmation. No separate scholarship office appears anywhere in the corpus text. See rule for HDBK / PART 3 / CHAPTER IV.",
+    "ADMISSIONS: no 'Office of Admissions' appears in the corpus. Student admission is currently routed to the Office of the University Registrar. Needs confirmation.",
+    "ALUMNI / INTERNSHIP: the Internship Manual's own front matter reads 'PLACEMENT, ALUMNI, AND LINKAGES'. Only 'Linkages Department' was found in prose. The unit may actually be named 'Placement, Alumni and Linkages Department'. Needs confirmation.",
+    "STUDENT DISCIPLINE OFFICE: appears 7x in prose and is treated as a distinct unit from SASD. Confirm whether it is a separate office or a function inside SASD.",
+    "Confirm that 'Student Affairs and Services Department', 'University Health Department', and 'Management Information Systems Department' are the CURRENT unit names and have not been renamed since the 2022/2023 editions."
+  ],
+
+  "document_defaults": {
+    "HDBK": "Student Affairs and Services Department",
+    "INTN": "Linkages Department",
+    "RSCH": "Research and Development Department"
+  },
+
+  "rules": [
+    { "doc": "HDBK", "root": "GUIDELINES", "chapter": "CHAPTER I STUDENT ADMISSION", "office": "Office of the University Registrar", "confirmed": false, "n": 6 },
+    { "doc": "HDBK", "root": "GUIDELINES", "chapter": "CHAPTER II STUDENT ENROLMENT", "office": "Office of the University Registrar", "confirmed": true, "n": 12 },
+
+    { "doc": "HDBK", "root": "PART 2. ACADEMIC GUIDELINES", "chapter": "CHAPTER I STUDENT EXAMINATION", "office": "Office of the University Registrar", "confirmed": false, "n": 3 },
+    { "doc": "HDBK", "root": "PART 2. ACADEMIC GUIDELINES", "chapter": "CHAPTER II ISSUANCE OF STUDENTS ACADEMIC RECORDS", "office": "Office of the University Registrar", "confirmed": true, "n": 9 },
+    { "doc": "HDBK", "root": "PART 2. ACADEMIC GUIDELINES", "chapter": "CHAPTER III RETENTION GUIDELINE FOR ALL ACADEMIC PROGRAMS", "office": "Office of the University Registrar", "confirmed": false, "n": 4 },
+    { "doc": "HDBK", "root": "PART 2. ACADEMIC GUIDELINES", "chapter": "CHAPTER IV SEMESTRAL ACADEMIC HONORS/ACHIEVERS", "office": "Office of the University Registrar", "confirmed": false, "n": 2 },
+    { "doc": "HDBK", "root": "PART 2. ACADEMIC GUIDELINES", "chapter": "CHAPTER V SENIOR HIGH SCHOOL, COLLEGIATE, AND GRADUATE SCHOOL GRADING SYSTEM", "office": "Office of the University Registrar", "confirmed": true, "n": 18 },
+    { "doc": "HDBK", "root": "PART 2. ACADEMIC GUIDELINES", "chapter": "CHAPTER VI MANAGEMENT OF EDUCATIONAL TRIPS, AND OTHER OFF-CAMPUS ACTIVITIES OF", "office": "Student Affairs and Services Department", "confirmed": false, "n": 19 },
+    { "doc": "HDBK", "root": "PART 2. ACADEMIC GUIDELINES", "chapter": "CHAPTER VII USE OF PINNACLE, THE LEARNING MANAGEMENT SYSTEM OF THE UNIVERSITY", "office": "Management Information Systems Department", "confirmed": false, "n": 4 },
+    { "doc": "HDBK", "root": "PART 2. ACADEMIC GUIDELINES", "chapter": "CHAPTER VIII SENIOR HIGH SCHOOL, COLLEGIATE, AND GRADUATE SCHOOL GRADUATION", "office": "Office of the University Registrar", "confirmed": true, "n": 7 },
+
+    { "doc": "HDBK", "root": "PART 3. STUDENT SUCCESS", "chapter": "CHAPTER I ACADEMIC CONSULTATION AND CLASS/YEAR LEVEL ADVISING", "office": "Guidance and Counseling Department", "confirmed": false, "n": 3 },
+    { "doc": "HDBK", "root": "PART 3. STUDENT SUCCESS", "chapter": "CHAPTER II SPORTS DEVELOPMENT PROGRAM AND SERVICES", "office": "Sports and Development Department", "confirmed": true, "n": 10 },
+    { "doc": "HDBK", "root": "PART 3. STUDENT SUCCESS", "chapter": "CHAPTER III RECOGNITION AND RENEWAL OF STUDENT ORGANIZATIONS", "office": "Student Affairs and Services Department", "confirmed": true, "n": 10 },
+    { "doc": "HDBK", "root": "PART 3. STUDENT SUCCESS", "chapter": "CHAPTER IV SCHOLARSHIP PROGRAM AND SERVICES", "office": "Student Affairs and Services Department", "confirmed": false, "placeholder": true, "note": "PLACEHOLDER per user direction 2026-08-08. No scholarship office found in corpus. Revisit.", "n": 5 },
+    { "doc": "HDBK", "root": "PART 3. STUDENT SUCCESS", "chapter": "CHAPTER V MANAGING IN-PERSON AND REMOTE STUDENT ACTIVITIES", "office": "Student Affairs and Services Department", "confirmed": true, "n": 9 },
+    { "doc": "HDBK", "root": "PART 3. STUDENT SUCCESS", "chapter": "CHAPTER VI PAMANTASAN NG CABUYAO STUDENT ELECTIONS", "office": "Student Affairs and Services Department", "confirmed": true, "n": 10 },
+    { "doc": "HDBK", "root": "PART 3. STUDENT SUCCESS", "chapter": "CHAPTER VII GUIDANCE AND COUNSELING PROGRAM AND SERVICES", "office": "Guidance and Counseling Department", "confirmed": true, "n": 6 },
+    { "doc": "HDBK", "root": "PART 3. STUDENT SUCCESS", "chapter": "CHAPTER VIII ALUMNI PROGRAM AND SERVICES", "office": "Linkages Department", "confirmed": false, "n": 3 },
+    { "doc": "HDBK", "root": "PART 3. STUDENT SUCCESS", "chapter": "CHAPTER IX LIBRARY SERVICES", "office": "University Library", "confirmed": true, "n": 13 },
+    { "doc": "HDBK", "root": "PART 3. STUDENT SUCCESS", "chapter": "CHAPTER X MEDICAL AND DENTAL SERVICES", "office": "University Health Department", "confirmed": true, "n": 6 },
+    { "doc": "HDBK", "root": "PART 3. STUDENT SUCCESS", "chapter": "CHAPTER XI CLIENT SATISFACTION SURVEY", "office": "Student Affairs and Services Department", "confirmed": false, "n": 2 },
+    { "doc": "HDBK", "root": "PART 3. STUDENT SUCCESS", "chapter": "CHAPTER XII USE OF COMPUTER LABORATORIES", "office": "Management Information Systems Department", "confirmed": false, "n": 4 },
+
+    { "doc": "HDBK", "root": "PART 4. CODE OF CONDUCT AND DISCIPLINARY PROCEDURES", "chapter": "CHAPTER I CODE OF STUDENT CONDUCT", "office": "Student Discipline Office", "confirmed": false, "n": 6 },
+    { "doc": "HDBK", "root": "PART 4. CODE OF CONDUCT AND DISCIPLINARY PROCEDURES", "chapter": "CHAPTER II STUDENT DISCIPLINE", "office": "Student Discipline Office", "confirmed": true, "n": 18 },
+    { "doc": "HDBK", "root": "PART 4. CODE OF CONDUCT AND DISCIPLINARY PROCEDURES", "chapter": "CHAPTER III STUDENT GRIEVANCE", "office": "Student Affairs and Services Department", "confirmed": false, "n": 6 },
+    { "doc": "HDBK", "root": "PART 4. CODE OF CONDUCT AND DISCIPLINARY PROCEDURES", "chapter": "CHAPTER IV CONDUCT OF DRUG TESTING", "office": "University Health Department", "confirmed": false, "n": 7 },
+    { "doc": "HDBK", "root": "PART 4. CODE OF CONDUCT AND DISCIPLINARY PROCEDURES", "chapter": "CHAPTER V SOCIAL MEDIA GUIDELINE", "office": "Student Affairs and Services Department", "confirmed": false, "n": 5 },
+
+    { "doc": "RSCH", "root": "GUIDELINES", "chapter": "CHAPTER I STUDENT TERMINAL PROGRAM", "office": "Research and Development Department", "confirmed": true, "n": 47 },
+    { "doc": "RSCH", "root": "GUIDELINES", "chapter": "CHAPTER II INSTITUTIONAL AND STUDENT RESEARCH ETHICS REVIEW", "office": "Research and Development Department", "confirmed": false, "note": "Research Ethics Review Committee appears in prose but is a committee, not a referable office.", "n": 17 },
+    { "doc": "RSCH", "root": "GUIDELINES", "chapter": "CHAPTER III RESEARCH AND DEVELOPMENT PROGRAMS AND SERVICES", "office": "Research and Development Department", "confirmed": true, "n": 4 },
+    { "doc": "RSCH", "root": "GUIDELINES", "chapter": "CHAPTER IV MANAGEMENT OF JOURNAL PUBLICATION", "office": "Research and Development Department", "confirmed": false, "n": 6 },
+    { "doc": "RSCH", "root": "GUIDELINES", "chapter": "CHAPTER V INTELLECTUAL PROPERTY RIGHTS", "office": "Knowledge Management and Innovation Department", "confirmed": true, "n": 16 },
+    { "doc": "RSCH", "root": "GUIDELINES", "chapter": "CHAPTER VI MANAGEMENT OF INNOVATION AND START-UP PROJECTS", "office": "Knowledge Management and Innovation Department", "confirmed": true, "n": 4 },
+    { "doc": "RSCH", "root": "KNOWLEDGE MANAGEMENT AND INNOVATION DEPARTMENT PHILOSOPHY AND OBJECTIVES", "chapter": "KNOWLEDGE MANAGEMENT AND INNOVATION DEPARTMENT PHILOSOPHY AND OBJECTIVES", "office": "Knowledge Management and Innovation Department", "confirmed": true, "n": 1 },
+    { "doc": "RSCH", "root": "RESEARCH AND DEVELOPMENT DEPARTMENT PHILOSOPHY AND OBJECTIVES", "chapter": "RESEARCH AND DEVELOPMENT DEPARTMENT PHILOSOPHY AND OBJECTIVES", "office": "Research and Development Department", "confirmed": true, "n": 1 },
+    { "doc": "RSCH", "root": "NETWORK AND LINKAGES", "chapter": "NETWORK AND LINKAGES", "office": "Linkages Department", "confirmed": false, "n": 1 },
+
+    { "doc": "INTN", "root": "GUIDELINES", "chapter": "GUIDELINES", "office": "Linkages Department", "confirmed": false, "n": 1 },
+    { "doc": "INTN", "root": "GUIDELINES", "chapter": "Section 1. General Policies", "office": "Linkages Department", "confirmed": false, "n": 1 },
+    { "doc": "INTN", "root": "GUIDELINES", "chapter": "Section 2. Specific Policies", "office": "Linkages Department", "confirmed": false, "n": 9 },
+    { "doc": "INTN", "root": "PLACEMENT, ALUMNI, AND LINKAGES PHILOSOPHY AND OBJECTIVES", "chapter": "PLACEMENT, ALUMNI, AND LINKAGES PHILOSOPHY AND OBJECTIVES", "office": "Linkages Department", "confirmed": false, "n": 1 }
+  ]
+}

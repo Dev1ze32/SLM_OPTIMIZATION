@@ -18,7 +18,7 @@ It is not a production deployment, a live LMS integration, a multilingual assist
 - Two routing outcomes: supported RAG answer, or predefined non-answer/office referral.
 - QLoRA trains response behavior, not university facts.
 - Compare base versus QLoRA-adapted behavior at the same 4-bit configuration.
-- Compare 4-bit with a feasible higher-precision reference configuration.
+- Compare 4-bit with an 8-bit reference configuration (the feasible higher-precision point within the 8 GB VRAM budget; full 16-bit does not fit).
 - Test in a controlled 8 GB VRAM environment.
 
 ## Read this first

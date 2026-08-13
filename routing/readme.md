@@ -45,7 +45,7 @@ breakdown per gate** (`scope_latency_ms`, `retrieval_latency_ms`,
 `generation_latency_ms`) plus `generator_calls` (0 or 1). Keeping these
 separate is deliberate — it's what lets you later attribute latency
 changes to the generation model alone when you run the base-vs-QLoRA and
-4-bit-vs-higher-precision comparisons, without routing overhead
+4-bit-vs-8-bit comparisons, without routing overhead
 contaminating the numbers.
 
 ## What to check while reviewing

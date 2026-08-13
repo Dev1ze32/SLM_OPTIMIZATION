@@ -16,13 +16,9 @@ The governing decisions are in [THESIS_BATTLE_PLAN.md](THESIS_BATTLE_PLAN.md).
 
 Use selected characteristics to organize prototype evaluation:
 
-- **Functional suitability:** answer correctness, groundedness, and citation accuracy.
+- **Functional suitability:** answer correctness, groundedness, citation accuracy, and citation validity (the connection between a response and its retrieved LMS passages — the identifier a response cites must resolve to evidence actually supplied to the model).
 - **Performance efficiency:** end-to-end latency, throughput, and VRAM consumption.
 - **Reliability of response handling:** consistent supported-answer versus non-answer/referral handling under the defined test cases.
-
-### ISO/IEC 25059:2023 - Quality model for AI systems
-
-Use this as the AI-system quality context for source traceability and evidence-grounded response behavior. The relevant prototype evidence is the connection between a response and its retrieved LMS passages.
 
 ## Evaluation matrix
 
@@ -31,18 +27,17 @@ This table organizes measurements defined in [EVALUATION_PLAN.md](EVALUATION_PLA
 | Quality focus | Prototype measure | Scoring | Evidence source |
 | --- | --- | --- | --- |
 | Functional suitability | correctness, groundedness, citation entailment | human, rubric-scored | answerable test cases with gold chunks |
+| Functional suitability (traceability) | citation validity (identifier resolves to supplied evidence) | automatic | local knowledge-base metadata |
 | Performance efficiency | latency, throughput, peak VRAM | automatic, ≥3 runs | controlled test-environment logs |
 | Response-handling reliability | correct answer or referral route; coverage and selective risk | automatic | all three query strata |
-| Source traceability | citation validity (identifier resolves to supplied evidence) | automatic | local knowledge-base metadata |
 
 ## Required wording in the manuscript
 
 Use this statement consistently:
 
-> The prototype evaluation is guided by selected measurable quality characteristics from ISO/IEC 25010:2023 and ISO/IEC 25059:2023. These standards are used as evaluation references only and do not indicate formal ISO certification.
+> The prototype evaluation is guided by selected measurable quality characteristics from ISO/IEC 25010:2023. This standard is used as an evaluation reference only and does not indicate formal ISO certification.
 
 ## References
 
 - ISO/IEC 25010:2023, *Systems and software engineering - Systems and software Quality Requirements and Evaluation (SQuaRE) - Product quality model*, 2nd ed., Nov. 2023. https://www.iso.org/standard/78176.html
-- ISO/IEC 25059:2023, *Software engineering - Systems and software Quality Requirements and Evaluation (SQuaRE) - Quality model for AI systems*, 1st ed., Jun. 2023. https://www.iso.org/standard/80655.html
 

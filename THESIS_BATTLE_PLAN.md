@@ -16,7 +16,7 @@ The study is a **controlled prototype evaluation**, not a production deployment,
 - RAG produces answers from retrieved LMS passages with document/page or section citations.
 - Lightweight routing returns either a supported RAG answer or a predefined non-answer/office referral. No clarification route is promised.
 - QLoRA trains helpdesk behavior, not changeable university facts.
-- A 4-bit configuration is compared with a feasible higher-precision reference configuration.
+- A 4-bit configuration is compared with an 8-bit reference configuration — the feasible higher-precision point within the 8 GB VRAM budget; full 16-bit does not fit.
 - Base and QLoRA-adapted model versions are compared under the same RAG configuration.
 - Evaluation occurs in an 8 GB VRAM controlled test environment.
 
@@ -28,7 +28,7 @@ English query -> retrieval and evidence check -> scope check only if insufficien
   -> supported: RAG answer with citation
   -> unsupported/out of scope: predefined non-answer or office referral
 
-Selected SLM -> base and QLoRA-adapted versions -> 4-bit and higher-precision test configurations
+Selected SLM -> base and QLoRA-adapted versions -> 4-bit and 8-bit test configurations
 All outputs -> quality and performance evaluation
 ```
 
@@ -36,13 +36,15 @@ All outputs -> quality and performance evaluation
 
 | Objective | Work package | Evidence of completion |
 | --- | --- | --- |
-| 1. Local 4-bit model | Configure selected SLM on the test environment | Reproducible configuration and resource log |
-| 2. Knowledge base | Prepare selected LMS materials and citation metadata | Traceable local corpus |
-| 3. Hybrid retrieval RAG | Retrieve passages (BM25 + dense embedding, RRF fusion) and generate cited English answers | Working prototype flow |
-| 4. Routing | Handle supported, unsupported, and out-of-scope queries | Documented response paths |
-| 5. QLoRA | Train behavior-only adapter and compare with base model | Quality comparison under identical RAG |
-| 6. Performance | Compare 4-bit and higher-precision reference | Latency, throughput, and VRAM results |
-| 7. Quality evaluation | Apply selected ISO-guided characteristics | Evaluation matrix and results |
+| 1. Model configuration and adaptation | Configure the selected SLM in 4-bit (and 8-bit reference) precision on the test environment; train and apply the behavior-only QLoRA adapter | Reproducible configuration/resource log; peak VRAM, latency, throughput (4-bit vs. 8-bit); answer correctness, groundedness, citation accuracy (base vs. QLoRA) |
+| 2. Knowledge base | Prepare selected LMS materials and citation metadata | Traceable local corpus; metadata completeness and citation validity rates |
+| 3. Hybrid retrieval RAG | Retrieve passages (BM25 + dense embedding, RRF fusion) and generate cited English answers | Working prototype flow; retrieval precision (Recall@k/MRR), answer accuracy, and error rate for the hybrid configuration |
+| 4. Routing | Handle supported, unsupported, and out-of-scope queries | Documented response paths; routing accuracy, coverage, selective risk |
+| 5. ISO-guided quality evaluation | Apply selected ISO/IEC 25010:2023 characteristics to the measurements from objectives 1, 3, and 4 | Evaluation matrix mapping functional suitability, performance efficiency, and reliability to existing results |
+
+Objective 5 adds no new measurement — it maps numbers already produced by
+objectives 1, 3, and 4 onto ISO/IEC 25010:2023 characteristics. See
+[ISO_STANDARDS_AND_THESIS_CONTEXT.md](ISO_STANDARDS_AND_THESIS_CONTEXT.md).
 
 ## Evaluation plan
 
@@ -54,12 +56,12 @@ Three configurations, all at hybrid retrieval:
 | --- | --- | --- | --- |
 | A | base | 4-bit | Anchor; shared by both comparisons |
 | B | QLoRA-adapted | 4-bit | A vs B isolates the adapter |
-| C | base | higher-precision reference | A vs C isolates quantization |
+| C | base | 8-bit | A vs C isolates quantization |
 
 1. **QLoRA comparison (A vs B):** measure answer correctness, groundedness, citation accuracy, instruction following, and unsupported-query handling.
 2. **Quantization comparison (A vs C):** measure end-to-end latency, throughput, VRAM consumption, groundedness, and citation accuracy.
-3. **Retrieval ablation:** BM25-only versus dense-only versus hybrid, using retrieval metrics only — no LLM call and no human grading. Retrieval stays fixed at hybrid for A, B, and C.
-4. **Final prototype quality:** assess functional suitability, performance efficiency, response-handling reliability, and source traceability using selected ISO/IEC 25010:2023 and ISO/IEC 25059:2023 characteristics.
+3. **Hybrid RAG pipeline evaluation:** measure retrieval precision (Recall@k/MRR), answer accuracy, and error rate for the hybrid configuration. Retrieval stays fixed at hybrid for A, B, and C; a BM25-only/dense-only comparison is out of scope for this controlled evaluation and is not run — hybrid retrieval's design is justified by corpus-specific reasoning instead (see Locked study decisions), and listed as future work.
+4. **Final prototype quality:** assess functional suitability, performance efficiency, and reliability using selected ISO/IEC 25010:2023 characteristics.
 
 The evaluation dataset is roughly 80 stratified English queries: answerable from the corpus, in scope without evidence, and out of scope. Record the expected answer or expected referral for each, and gold supporting chunks for the answerable ones.
 
@@ -78,7 +80,7 @@ Excluded: live LMS connection, personal student records, multilingual support, r
 1. Finalize selected LMS corpus and a small labelled English evaluation set.
 2. Build the local knowledge base and BM25 retrieval with stable citation metadata.
 3. Implement the base-model RAG answer path and non-answer/referral path.
-4. Establish base 4-bit and higher-precision performance baselines.
+4. Establish base 4-bit and 8-bit performance baselines.
 5. Train behavior-only QLoRA and repeat the same evaluation.
 6. Organize results under the selected ISO quality characteristics.
 7. Update the manuscript only with findings supported by the final measurements.
@@ -87,9 +89,9 @@ Excluded: live LMS connection, personal student records, multilingual support, r
 
 - LMS material may be incomplete, outdated, or inconsistent; record source dates and limitations.
 - Hybrid retrieval (BM25 handles keyword/exact-token queries; dense embedding handles paraphrase/intent) reduces the likelihood either retriever alone misses relevant passage. The disjunctive sufficiency gate admits answers when either retriever exceeds its component threshold, not when both fail.
-- A full-precision configuration may not fit the test environment; use a feasible higher-precision reference and document it.
+- A full 16-bit configuration does not fit the 8 GB VRAM test environment: for a ~3-4B parameter model, fp16 weights alone require roughly 6-8 GB, leaving no headroom for KV-cache, activations, or framework overhead. An 8-bit configuration is used instead as the feasible higher-precision reference; this substitution is documented as a hardware-driven decision, not an oversight.
 - RAG and citations reduce unsupported answers but do not guarantee correctness; preserve the non-answer/referral path.
-- The evaluation must demonstrate that hybrid retrieval performs better than BM25 or dense alone, justifying the added complexity.
+- Hybrid retrieval is not empirically compared against BM25-only or dense-only retrieval in this study; its design is justified by corpus-specific reasoning (form codes/acronyms favor lexical matching, paraphrased student queries favor semantic matching) and cited literature instead. State this explicitly as a limitation and list the empirical ablation as future work.
 
 ## Document map
 

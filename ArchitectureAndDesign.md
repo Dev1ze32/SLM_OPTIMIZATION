@@ -30,7 +30,7 @@ flowchart LR
   S -->|"Yes"| F["Predefined office referral"]
   G --> V["Citation validation"]
   V --> O["Citation-backed response"]
-  M["Base and QLoRA-adapted model versions<br/>4-bit and higher-precision reference"] --> G
+  M["Base and QLoRA-adapted model versions<br/>4-bit and 8-bit reference"] --> G
 ```
 
 ## Knowledge base
@@ -83,10 +83,10 @@ QLoRA training examples teach use of retrieved evidence, citation formatting, co
 
 | Configuration | Purpose |
 | --- | --- |
-| Base model, feasible higher-precision reference | Quality/performance reference |
+| Base model, 8-bit reference | Quality/performance reference |
 | Base model, 4-bit | Measures memory and latency trade-off |
 
-The higher-precision reference must run under comparable conditions. Do not compare 4-bit with a configuration that fails, offloads to different hardware, or changes the test conditions.
+The 8-bit reference must run under comparable conditions. Do not compare 4-bit with a configuration that fails, offloads to different hardware, or changes the test conditions. A full 16-bit reference was ruled out: for a ~3-4B parameter model, fp16 weights alone (~6-8 GB) leave no headroom in an 8 GB VRAM budget for KV-cache, activations, or framework overhead — 8-bit is the feasible higher-precision point instead.
 
 ## Evaluation measures
 

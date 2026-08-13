@@ -14,7 +14,7 @@ Undergraduate CpE thesis: **Optimizing Local Small Language Models Using 4-Bit Q
 - English queries only. Retrieval is hybrid-RAG: BM25 (lexical) + dense embedding fetch candidates, RRF fuses rankings, a disjunctive sufficiency gate admits answers when either component exceeds its own threshold, then the SLM generates one cited answer.
 - Two routing outcomes only: cited RAG answer, or predefined non-answer/office referral. No clarification route.
 - QLoRA adapts response *behavior* (citation formatting, conciseness, non-answer handling) — never trains in facts. Facts live only in the LMS corpus.
-- Every comparison (base vs QLoRA, 4-bit vs higher-precision reference) holds corpus, prompt, query set, decoding settings, and hardware constant.
+- Every comparison (base vs QLoRA, 4-bit vs 8-bit reference) holds corpus, prompt, query set, decoding settings, and hardware constant.
 - Test environment: 8 GB VRAM.
 - Hybrid is justified by this corpus specifically: form codes (`PNC:AA-FO-45`), acronyms, and figures favor BM25; student phrasing vs. policy register ("can I take a break" → "Leave of Absence") favors dense. Neither alone covers both — this is the Chapter 3 justification, keep it.
 
@@ -45,7 +45,7 @@ English query -> routing/router.py orchestrates three gates, retrieval before sc
 
 Full design lives in `EVALUATION_PLAN.md` — configurations, query-set strata, pooling protocol, effort budget, triage order. Facts that constrain code:
 
-- Three configs (A=base, B=QLoRA, C=higher-precision), all at hybrid retrieval, one-factor-at-a-time from shared anchor A — not a factorial grid.
+- Three configs (A=base 4-bit, B=QLoRA 4-bit, C=base 8-bit), all at hybrid retrieval, one-factor-at-a-time from shared anchor A — not a factorial grid.
 - Retrieve once per query, cache, replay identical evidence across A/B/C.
 - Report Recall@k for **k ≤ 10 only** (the pooling protocol only covers that far).
 

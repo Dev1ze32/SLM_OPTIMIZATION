@@ -14,13 +14,13 @@ Comparisons are one-factor-at-a-time from a shared anchor, **not** a factorial. 
 | --- | --- | --- | --- | --- |
 | **A** | base | 4-bit | hybrid | Anchor; shared by both comparisons |
 | **B** | QLoRA-adapted | 4-bit | hybrid | A vs B isolates the adapter |
-| **C** | base | higher-precision reference | hybrid | A vs C isolates quantization |
+| **C** | base | 8-bit | hybrid | A vs C isolates quantization |
 
 - **Comparison 1 (QLoRA):** A vs B. Answer correctness, groundedness, citation accuracy, routing accuracy.
 - **Comparison 2 (Quantization):** A vs C. Latency, throughput, peak VRAM, plus groundedness and citation accuracy to detect quality loss.
-- **Retrieval ablation:** BM25-only vs dense-only vs hybrid. Retrieval metrics only — no LLM call, no human grading. See below.
+- **Hybrid RAG pipeline (descriptive, no baseline):** retrieval precision (Recall@k, MRR), answer accuracy, and error rate for the hybrid configuration only.
 
-Retrieval is held at hybrid for A, B, and C. The ablation never propagates into generation.
+Retrieval is held at hybrid for A, B, and C. A BM25-only/dense-only ablation is **not run** — descoped per adviser direction; hybrid's design is justified by corpus-specific reasoning (see `THESIS_BATTLE_PLAN.md`'s Locked study decisions) rather than an empirical comparison, and is listed as future work.
 
 ## Evaluation query set
 
@@ -58,7 +58,7 @@ Only two metric families require human judgment. Everything else is a script.
 
 | Metric | Cost | Applies to |
 | --- | --- | --- |
-| Recall@k (k ≤ 10), MRR, nDCG | automatic | retrieval ablation only |
+| Recall@k (k ≤ 10), MRR, nDCG | automatic | hybrid configuration only (descriptive; no single-method baseline) |
 | Routing decision correct (answer vs refer) | automatic — compare to gold stratum label | A, B, C |
 | Citation **validity** (ID ∈ supplied evidence) | automatic — string check | A, B, C |
 | Coverage, selective risk | automatic — derived | A, B, C |
@@ -100,6 +100,7 @@ These appear in the archived `consultation/` notes and must not creep back in.
 | --- | --- | --- |
 | Q2 (behavior + facts QLoRA), stale-fact experiment | `03` | Third adapter arm; already cut |
 | Quantization frontier (Q8 / Q5_K_M / Q4_K_M / Q3) | `05` | Two precision points only, per battle plan |
+| Retrieval ablation (BM25-only vs dense-only vs hybrid comparison) | n/a | Descoped per adviser direction; hybrid justified by corpus-specific reasoning instead, listed as future work |
 | Prompt variants P0–P3 | `06` | A fourth experimental axis |
 | Chunking strategy comparison | `04` | Corpus is already chunked; fix it and justify in prose |
 | Embedding model comparison | `04` | `bge-small-en-v1.5` selected on size and CPU constraint |
@@ -133,9 +134,13 @@ If the schedule collapses, drop from the bottom. Decide this now, not in the fin
 2. A vs B (base vs QLoRA) on answerable queries — the title's core claim
 3. A vs C latency / VRAM / throughput — automatic
 4. Second-annotator agreement — shrink the subset before dropping
-5. Retrieval ablation — first to go; justify hybrid from literature and corpus evidence instead, and list the ablation as future work
 
-The ISO 25010 / 25059 mapping is not on this list: it costs no extra measurement, only a table mapping numbers you already have. See [ISO_STANDARDS_AND_THESIS_CONTEXT.md](ISO_STANDARDS_AND_THESIS_CONTEXT.md).
+The retrieval ablation (BM25-only vs dense-only vs hybrid) is already
+descoped — not a triage candidate, since it was cut before the schedule
+required it. Hybrid retrieval is justified by corpus-specific reasoning
+instead; the ablation is listed as future work.
+
+The ISO 25010 mapping is not on this list: it costs no extra measurement, only a table mapping numbers you already have. See [ISO_STANDARDS_AND_THESIS_CONTEXT.md](ISO_STANDARDS_AND_THESIS_CONTEXT.md).
 
 ## Still to be specified
 
